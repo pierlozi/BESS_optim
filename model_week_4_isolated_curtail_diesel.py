@@ -90,7 +90,7 @@ for j in range(7,8):
     ''' bess_bin is the variable that tells which type of microgrid we have, with (1) or without (0) BESS.
     I use it so that the model compiles different objective functions and constraints for the two types.'''
     
-    for bess_bin in range(0,2): 
+    for bess_bin in range(0,3): #0 = no BESS ; 1 = BESS; 2 = no RES
             
         m = ConcreteModel()
         
@@ -126,7 +126,8 @@ for j in range(7,8):
         m.P_dg = Var(m.iIDX, domain = NonNegativeReals) #hourly power of diesel
         m.Pr_dg = Var(domain=NonNegativeReals) #power rating of diesel
         
-        m.P_curt = Var(m.iIDX, domain = NonNegativeReals)
+        if bess_bin != 2:
+            m.P_curt = Var(m.iIDX, domain = NonNegativeReals)
         
         
         if bess_bin==1:
@@ -148,10 +149,20 @@ for j in range(7,8):
             
             m.obj = Objective(rule = obj_funct, sense=minimize)
             
-            def f_equilibrium(m,i):
-                return m.P_ren[i] + m.P_dg[i] == m.P_load[i] + m.P_curt[i]
-            
-            m.cstr_eq = Constraint(m.iIDX, rule = f_equilibrium)
+            if bess_bin == 0: #no BESS
+                
+                def f_equilibrium(m,i):
+                    return m.P_ren[i] + m.P_dg[i] == m.P_load[i] + m.P_curt[i]
+                
+                m.cstr_eq = Constraint(m.iIDX, rule = f_equilibrium)
+                
+            else: #no RESS
+                
+                def f_equilibrium(m,i):
+                    return m.P_dg[i] == m.P_load[i]
+                
+                m.cstr_eq = Constraint(m.iIDX, rule = f_equilibrium)
+                
             
         
         
@@ -225,7 +236,10 @@ for j in range(7,8):
         P_ren = np.array([value(m.P_ren[i]) for i in m.iIDX])
         P_load = np.array([value(m.P_load[i]) for i in m.iIDX])
         
-        P_curt = np.array([value(m.P_curt[i]) for i in m.iIDX])
+        if bess_bin != 2:
+            P_curt = np.array([value(m.P_curt[i]) for i in m.iIDX])
+        else:
+            P_curt = np.array([0 for i in m.iIDX])
         
         if bess_bin==1:
                 
@@ -263,7 +277,7 @@ for j in range(7,8):
         # print('The total cost related to diesel fuel expense is ', dg_cost, 'millions.')
 
 # Here I build a dataframe to better visually show the results
-data = pd.DataFrame({ 'Type': ['No BESS', 'BESS'],
+data = pd.DataFrame({ 'Type': ['No BESS', 'BESS', 'No RES'],
                      'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
                      'Pr_diesel [MW]': Pr_dg,
