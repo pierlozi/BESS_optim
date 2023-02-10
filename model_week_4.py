@@ -5,6 +5,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+#grid connected microgrid with pv+wind, load, BESS, curtailment and no diesel
+
+''' in this one i was trying to see how much changing the optimization horizon (in terms of months)
+would change the results'''
+
 # price = pd.read_excel("Cycle_calculations.xlsx", sheet_name='Electricity Prices', usecols = "A") #eur/MWh
 # price_dict = dict()
 
