@@ -87,7 +87,7 @@ for j in range(7,8):
     # ren_surplus = sum(P_ren_data['Power'].values[i] for i in time_range_optim)-sum(P_load_data['Load [MW]'].values[i] for i in time_range_optim)
     # print('The renewable energy surplus is of ',ren_surplus , 'MWh')
     
-    ''' bess_bin is the variable that tells which type of microgrid we have, with (1) or without (0) BESS.
+    ''' bess_bin is the variable that tells which type of microgrid we have, 0 = only diesel ; 1 = diesel + res; 2 = diesel + res + storage.
     I use it so that the model compiles different objective functions and constraints for the two types.'''
     
     for bess_bin in range(0,3): #0 = no BESS ; 1 = BESS; 2 = no RES
@@ -114,7 +114,7 @@ for j in range(7,8):
         m.alpha = Param(initialize=0.24) #L/kW
         m.beta = Param(initialize=0.084) #L/kW
         
-        if bess_bin == 1:        
+        if bess_bin == 2:    #with the BESS    
             m.P_ch = Var(m.iIDX, domain=NonNegativeReals)
             m.P_dch = Var(m.iIDX, domain = NonNegativeReals)
             m.Pr_BES = Var(domain=NonNegativeReals, bounds=(0, 10*max(P_load_data['Load [MW]'])))
@@ -126,11 +126,11 @@ for j in range(7,8):
         m.P_dg = Var(m.iIDX, domain = NonNegativeReals) #hourly power of diesel
         m.Pr_dg = Var(domain=NonNegativeReals) #power rating of diesel
         
-        if bess_bin != 2:
+        if bess_bin != 0: #only diesel
             m.P_curt = Var(m.iIDX, domain = NonNegativeReals)
         
         
-        if bess_bin==1:
+        if bess_bin==2:
             
             def obj_funct(m):
                 return (m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*10
@@ -149,7 +149,7 @@ for j in range(7,8):
             
             m.obj = Objective(rule = obj_funct, sense=minimize)
             
-            if bess_bin == 0: #no BESS
+            if bess_bin == 1: #no BESS
                 
                 def f_equilibrium(m,i):
                     return m.P_ren[i] + m.P_dg[i] == m.P_load[i] + m.P_curt[i]
@@ -169,7 +169,7 @@ for j in range(7,8):
         
         'BATTERY CONSTRAINTS'#---------------------------------------------------------------------------------------------------------------
         
-        if bess_bin==1:
+        if bess_bin==2:
         
             def f_SOC_lim_up(m,i):
                 return m.SOC[i]<= m.Er_BES
@@ -236,12 +236,12 @@ for j in range(7,8):
         P_ren = np.array([value(m.P_ren[i]) for i in m.iIDX])
         P_load = np.array([value(m.P_load[i]) for i in m.iIDX])
         
-        if bess_bin != 2:
+        if bess_bin != 0: #only diesel
             P_curt = np.array([value(m.P_curt[i]) for i in m.iIDX])
         else:
             P_curt = np.array([0 for i in m.iIDX])
         
-        if bess_bin==1:
+        if bess_bin==2:
                 
             SOC = np.array([value(m.SOC[i]) for i in m.iIDX])
             SOC = SOC/value(m.Er_BES)
@@ -276,8 +276,9 @@ for j in range(7,8):
         # print('The total cost of the battery system is ', BES_cost, 'millions.')
         # print('The total cost related to diesel fuel expense is ', dg_cost, 'millions.')
 
+
 # Here I build a dataframe to better visually show the results
-data = pd.DataFrame({ 'Type': ['No BESS', 'BESS', 'No RES'],
+data = pd.DataFrame({ 'Type': [ 'D', 'D+R', 'D+R+S'],
                      'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
                      'Pr_diesel [MW]': Pr_dg,
@@ -289,7 +290,9 @@ data = pd.DataFrame({ 'Type': ['No BESS', 'BESS', 'No RES'],
 data['Total cost [million euros]'] = data['BES cost [million euros]'] + data['Fuel cost [million euros]']
 
 print(data.T)
-print('Installing BESS brings', (data['Total cost [million euros]'][0]-data['Total cost [million euros]'][1])/(data['Total cost [million euros]'][0])*100, '% savings over the lifetime of the battery' )
+print('Installing BESS brings', (data['Total cost [million euros]'][1]-data['Total cost [million euros]'][2])/(data['Total cost [million euros]'][1])*100, '% savings over the lifetime of the battery' )
+
+# %% DATA PLOT
 
 display_start = 0
 display_end = 24*7
