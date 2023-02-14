@@ -1,3 +1,4 @@
+# %% 
 import time
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
@@ -22,6 +23,12 @@ P_load_data = pd.read_excel('load_data.xlsx', sheet_name='Yearly Load', header=0
 P_ren_read = pd.read_csv('RESData_option-2.csv', header=0, nrows = 8760) #W
 
 surplus_perc = []
+
+SOC = []
+P_BES = []
+P_dch = []
+P_dg = []
+P_curt = []
 
 BES_cost = []
 Er_BES =  []
@@ -237,32 +244,31 @@ for j in range(7,8):
         P_load = np.array([value(m.P_load[i]) for i in m.iIDX])
         
         if bess_bin != 0: #only diesel
-            P_curt = np.array([value(m.P_curt[i]) for i in m.iIDX])
+            P_curt.append(np.array([value(m.P_curt[i]) for i in m.iIDX]))
         else:
-            P_curt = np.array([0 for i in m.iIDX])
+            P_curt.append(np.array([0 for i in m.iIDX]))
         
         if bess_bin==2:
                 
-            SOC = np.array([value(m.SOC[i]) for i in m.iIDX])
-            SOC = SOC/value(m.Er_BES)
-            P_BES = np.array([(value(m.P_dch[i]) - value(m.P_ch[i]) ) for i in m.iIDX])
-            P_dch = value(sum(m.P_dch[i] for i in m.iIDX))
+            SOC.append(np.array([value(m.SOC[i]) for i in m.iIDX])/value(m.Er_BES))
+            P_BES.append(np.array([(value(m.P_dch[i]) - value(m.P_ch[i]) ) for i in m.iIDX]))
+            P_dch.append(value(sum(m.P_dch[i] for i in m.iIDX)))
             BES_cost.append(value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)/1e6) #milions
             Er_BES.append(value(m.Er_BES))
             Pr_BES.append(value(m.Pr_BES))
             
         else:
             
-            SOC = np.array([0 for i in m.iIDX])
+            SOC.append(np.array([0 for i in m.iIDX]))
             # SOC = SOC/value(m.Er_BES)
-            P_BES = np.array([0 for i in m.iIDX])
-            P_dch = value(sum(0 for i in m.iIDX))
+            P_BES.append(np.array([0 for i in m.iIDX]))
+            P_dch.append(value(sum(0 for i in m.iIDX)))
             BES_cost.append(0) #milions
             Er_BES.append(0)
             Pr_BES.append(0)
             
         
-        P_dg = np.array([value(m.P_dg[i]) for i in m.iIDX])    
+        P_dg.append(np.array([value(m.P_dg[i]) for i in m.iIDX]))  
         dg_cost.append(value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*10/1e6))    
         Pr_dg.append(value(m.Pr_dg))
         
@@ -276,6 +282,11 @@ for j in range(7,8):
         # print('The total cost of the battery system is ', BES_cost, 'millions.')
         # print('The total cost related to diesel fuel expense is ', dg_cost, 'millions.')
 
+
+P_BES = np.asarray(P_BES)
+P_curt = np.asarray(P_curt)
+P_dg = np.asarray(P_dg)
+SOC = np.asarray(SOC)
 
 # Here I build a dataframe to better visually show the results
 data = pd.DataFrame({ 'Type': [ 'D', 'D+R', 'D+R+S'],
@@ -324,64 +335,74 @@ time_horizon = range(display_start, display_end)
 # plt.show()
 # plt.close()
 
-fig, ax_pow = plt.subplots(figsize=(10,8))
-
-ax_pow.set_ylabel("Power [MW]",fontsize=size_font)
-ax_pow.set_xlabel("Time [h]",fontsize=size_font)
-ax_pow.plot(time_horizon, P_load[display_start:display_end], color='black')
-ax_pow.plot(time_horizon, P_BES[display_start:display_end], color = 'blue')
-ax_pow.plot(time_horizon, P_ren[display_start:display_end], color = 'green')
-ax_pow.plot(time_horizon, P_curt[display_start:display_end], color='red')
-ax_pow.plot(time_horizon, P_dg[display_start:display_end], color='orange')
-ax_pow.legend(['P_Load', 'P_BES', 'P_ren', 'P_curt','P_diesel'],loc=4)
-
-ax_SOC = ax_pow.twinx()  # instantiate a second axes that shares the same x-axis
-
-ax_SOC.set_ylabel('SOC [-]',fontsize=size_font)  # we already handled the x-label with ax1
-ax_SOC.plot(time_horizon, SOC[display_start:display_end], color='cyan')
-ax_SOC.legend(['SOC'],loc=2)
-
-ax_pow.spines['right'].set_position(('axes',0.15))
-
-ax_pow.spines['right'].set_color("black")
-ax_SOC.spines['right'].set_color("cyan")
-
-plt.grid(True)
 
 
-fig.set_size_inches(10,8)
-fig.set_dpi(200)
-ax_pow.tick_params(axis='both', which='major', labelsize=size_font)
-ax_SOC.tick_params(axis='both', which='major', labelsize=size_font)
+for bess_bin in range(0,3):
+        
+    fig, ax_pow = plt.subplots(figsize=(10,8))
 
-plt.savefig('powers_SOC.png',bbox_inches='tight', dpi=150)
+    ax_pow.set_ylabel("Power [MW]",fontsize=size_font)
+    ax_pow.set_xlabel("Time [h]",fontsize=size_font)
+    ax_pow.plot(time_horizon, P_load[display_start:display_end], color='black')
+    ax_pow.plot(time_horizon, P_BES[bess_bin, display_start:display_end], color = 'blue')
+    ax_pow.plot(time_horizon, P_ren[display_start:display_end], color = 'green')
+    ax_pow.plot(time_horizon, P_curt[bess_bin, display_start:display_end], color='red')
+    ax_pow.plot(time_horizon, P_dg[bess_bin, display_start:display_end], color='orange')
+    ax_pow.legend(['P_Load', 'P_BES', 'P_ren', 'P_curt','P_diesel'],loc=4)
 
-plt.show()
+    if bess_bin == 0:
+        ax_pow.set_title("Energy dispatch diesel")
+    elif bess_bin == 1:
+        ax_pow.set_title("Energy dispatch diesel + PV")
+    else:
+        ax_pow.set_title("Energy dispatch diesel + PV + BESS")
+
+    ax_SOC = ax_pow.twinx()  # instantiate a second axes that shares the same x-axis
+
+    ax_SOC.set_ylabel('SOC [-]',fontsize=size_font)  # we already handled the x-label with ax1
+    ax_SOC.plot(time_horizon, SOC[bess_bin, display_start:display_end], color='cyan')
+    ax_SOC.legend(['SOC'],loc=2)
+
+    ax_pow.spines['right'].set_position(('axes',0.15))
+
+    ax_pow.spines['right'].set_color("black")
+    ax_SOC.spines['right'].set_color("cyan")
+
+    plt.grid(True)
+
+
+    fig.set_size_inches(10,8)
+    fig.set_dpi(200)
+    ax_pow.tick_params(axis='both', which='major', labelsize=size_font)
+    ax_SOC.tick_params(axis='both', which='major', labelsize=size_font)
+
+    # plt.savefig('powers_SOC.png',bbox_inches='tight', dpi=150)
+
+    plt.show()
+
 plt.close()
 
-fig, ax_pow = plt.subplots(figsize=(10,8))
+# fig, ax_pow = plt.subplots(figsize=(10,8))
 
-ax_pow.set_ylabel("Energy throughput [% of nominal capacity]",fontsize=size_font)
-ax_pow.set_xlabel("Time [h]",fontsize=size_font)
-ax_pow.set_title("Energy throughput")
-ax_pow.plot(time_horizon, abs(P_BES[display_start:display_end])/Er_BES[-1]*100, color = 'blue')
-
-
+# ax_pow.set_ylabel("Energy throughput [% of nominal capacity]",fontsize=size_font)
+# ax_pow.set_xlabel("Time [h]",fontsize=size_font)
+# ax_pow.set_title("Energy throughput")
+# ax_pow.plot(time_horizon, abs(P_BES[display_start:display_end])/Er_BES[-1]*100, color = 'blue')
 
 
-plt.grid(True)
 
 
-fig.set_size_inches(10,8)
-fig.set_dpi(200)
-ax_pow.tick_params(axis='both', which='major', labelsize=size_font)
-# ax_SOC.tick_params(axis='both', which='major', labelsize=size_font)
-
-# plt.savefig('powers_SOC.png',bbox_inches='tight', dpi=150)
-
-plt.show()
-plt.close()
+# plt.grid(True)
 
 
+# fig.set_size_inches(10,8)
+# fig.set_dpi(200)
+# ax_pow.tick_params(axis='both', which='major', labelsize=size_font)
+# # ax_SOC.tick_params(axis='both', which='major', labelsize=size_font)
+
+# # plt.savefig('powers_SOC.png',bbox_inches='tight', dpi=150)
+
+# plt.show()
+# plt.close()
 
 
