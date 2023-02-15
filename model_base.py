@@ -107,7 +107,7 @@ m.beta = Param(initialize=0.084) #L/kW
 #minimum up and down time for diesel from
 # "Optimal sizing of battery energy storage systems in off-grid micro grids using convex optimization"
 m.UT = Param(initialize = 5) #h
-m.DT = Param(initialize = 1) #h
+m.DT = Param(initialize = 20) #h
 
 m.Pr_dg_MAX = Param(initialize = max(P_load_data['Load [MW]']))
 
@@ -214,13 +214,36 @@ m.cstr_dg_commit = Constraint(m.iIDX, rule=f_dg_commit)
 
 m.cstr_dg_uptime = ConstraintList()
 
-def g_dg_uptime(m, i):
-    return sum(m.u[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i]
+# def f_dg_uptime(m, i):
+#     return sum(m.u[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i]
 
 for i in m.iIDX:
     if i <= len(m.iIDX) - m.UT - 1:
         m.cstr_dg_uptime.add(sum(m.u_dg[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i])
-    
+
+m.cstr_dg_dwntime = ConstraintList()
+
+# def f_dg_dwntime(m, i):
+#     return sum((1 - m.u_dg[j]) for j in range(i, i + m.UT) ) >= m.DT*m.w_dg[i]
+
+for i in m.iIDX:
+    if i <= len(m.iIDX) - m.DT - 1:
+        m.cstr_dg_dwntime.add(sum((1 - m.u_dg[j]) for j in range(i, i + m.DT) ) >= m.DT*m.w_dg[i]
+)   
+m.cstr_up_dwn_commit = ConstraintList()
+
+# def f_up_dwn_commit(m, i):
+#     return m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1]
+
+for i in m.iIDX:
+    if i > 0:
+        m.cstr_up_dwn_commit.add(m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1])
+
+def f_up_dwn_excl(m, i):
+    return m.v_dg[i] + m.w_dg[i] <= 1
+
+m.cstr_up_dwn_excl = Constraint(m.iIDX, rule = f_up_dwn_excl)
+
 # %%
 start = time.time()
 opt = SolverFactory("gurobi")
@@ -245,6 +268,7 @@ P_curt.append(np.array([value(m.P_curt[i]) for i in m.iIDX]))
 P_dg.append(np.array([value(m.P_dg[i]) for i in m.iIDX]))  
 dg_cost.append(value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*10/1e6))    
 Pr_dg.append(value(m.Pr_dg))
+u_dg = np.array([value(m.u_dg[i]) for i in m.iIDX])
 
 # LCOS = (BES_cost[n_month-1] + sum((Er_BES[n_month-1]*value(m.C_OM)*1e3/(1+value(m.IR))**(y-1)) 
 #                                       for y in range(1,value(m.lifetime)+1)))/ \
@@ -279,8 +303,8 @@ print(data.T)
 
 # %% DATA PLOT
 
-display_start = 24*30
-display_end = 24*35
+display_start = 500
+display_end = 600
 
 time_horizon = range(display_start, display_end)
     
@@ -309,7 +333,13 @@ time_horizon = range(display_start, display_end)
 # plt.show()
 # plt.close()
 
-        
+fig, ax = plt.subplots()
+
+ax.plot(time_horizon, u_dg[display_start:display_end])
+ax.plot(time_horizon, P_dg[0,display_start:display_end], color='orange')
+
+plt.show()
+
 fig, ax_pow = plt.subplots(figsize=(10,8))
 
 ax_pow.set_ylabel("Power [MW]",fontsize=size_font)
