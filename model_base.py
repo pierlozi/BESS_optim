@@ -13,12 +13,14 @@ size_font = 10
 optim_time = 8760 # number of hours to display
 time_range_optim = range(optim_time)
 
-
+''' Reading the data from csv files'''
 price_data = pd.read_csv("PriceCurve_SE3_2021.csv", header = 0, nrows = 8760, sep=';') #eur/MWh
 P_load_data = pd.read_excel('load_data.xlsx', sheet_name='Yearly Load', header=0) #MW
 P_ren_read = pd.read_csv('RESData_option-2.csv', header=0, nrows = 8760) #W
 
 surplus_perc = []
+
+'''Initializing the lists of all the paramters and variables which values I want to store'''
 
 SOC = []
 P_BES = []
@@ -33,11 +35,11 @@ Pr_BES = []
 dg_cost = []    
 Pr_dg = []
 
+'''I multiply the renewable power production with a scaling factor to bring it to the same order of magnitutde of the load'''
+P_prod_data = P_ren_read['Power']/1e6*7 #MW 
 
-P_ren_data = P_ren_read['Power']/1e6*7 #MW 
-    
+'''I produce dictionaries of the data imported as the pyomo framework reads input parameters in form of dictionary'''
 price_dict = dict()
-
 for i in time_range_optim:
     price_dict[i] = price_data['Grid_Price'].values[i]
 
@@ -45,9 +47,9 @@ P_load_dict = dict()
 for i in time_range_optim:
     P_load_dict[i] = P_load_data['Load [MW]'].values[i]
     
-P_ren_dict = dict()
+P_prod_dict = dict()
 for i in time_range_optim:
-    P_ren_dict[i] = P_ren_data[i] #MW
+    P_prod_dict[i] = P_prod_data[i] #MW
 
     
 # ax_pow = plt.gca()
@@ -67,50 +69,82 @@ I use it so that the model compiles different objective functions and constraint
 
 m = ConcreteModel()
 
+#m.iIDX is the set which keeps the time in the simulation
 m.iIDX = Set(initialize = time_range_optim)
+
+'''importing data in the pyomo framewrok''' 
 m.P_load = Param(m.iIDX,initialize=P_load_dict)
-m.P_ren = Param(m.iIDX, initialize=P_ren_dict)
+m.P_prod = Param(m.iIDX, initialize=P_prod_dict)
 m.price = Param(m.iIDX, initialize = price_dict)
-m.eff_ch = Param(initialize=sqrt(0.95)) #square root of roundtrip efficiency used in amazing reference
+
+'''initializing parameters for the simulation'''
+
+#the charging and dischargin efficiencies are calculeted using a roundrtip efficiency value
+#of 0.95 (Reference: Optimal sizing of battery energy storage in a microgrid considering capacity degradation and replacement year)
+m.eff_ch = Param(initialize=sqrt(0.95)) 
 m.eff_dch = Param(initialize=sqrt(0.95))
+
+# m.lifetime of the battery is the float life of the battery (Reference: Optimal sizing of battery energy storage in a microgrid considering capacity degradation and replacement year)
 m.lifetime = Param(initialize=10) #years
 m.C_P = Param(initialize=320) #$/kW
 m.C_E = Param(initialize=360) #$/kWh
 m.C_inst = Param(initialize=15) #$/kWh
 m.C_OM = Param(initialize=5) #$/kW
-m.IR = Param(initialize=0.05)
 m.sigma = Param(initialize=0.002/24) #original daily self discharge is 0,2% -> we need an hourly self discharge
+
 m.gamma_min = Param(initialize=0)
 m.gamma_MAX = Param(initialize=10000) #maximum 10 (Stefan) -> for now I leave it very high to see how the system behaves
+
 m.P_BES_MAX = Param(initialize=5*max(P_load_data['Load [MW]']))
-m.price_f = Param(initialize=1.66) #euro/L
+
+m.price_f = Param(initialize=2) #euro/L
+
+#empirical parameters for diesel fuel consumption from 
+# "Multi objective particle swarm optimization of hybrid micro-grid system: A case study in Sweden"
 m.alpha = Param(initialize=0.24) #L/kW
 m.beta = Param(initialize=0.084) #L/kW
 
- #with the BESS    
+#minimum up and down time for diesel from
+# "Optimal sizing of battery energy storage systems in off-grid micro grids using convex optimization"
+m.UT = Param(initialize = 5) #h
+m.DT = Param(initialize = 1) #h
+
+m.Pr_dg_MAX = Param(initialize = max(P_load_data['Load [MW]']))
+
+#with the BESS    
 m.P_ch = Var(m.iIDX, domain=NonNegativeReals)
 m.P_dch = Var(m.iIDX, domain = NonNegativeReals)
+m.P_RES = Var(m.iIDX, domain = NonNegativeReals)
 m.P_curt = Var(m.iIDX, domain = NonNegativeReals)
 m.Pr_BES = Var(domain=NonNegativeReals, bounds=(0, 10*max(P_load_data['Load [MW]'])))
 m.Er_BES = Var(domain=NonNegativeReals)
 m.SOC = Var(m.iIDX, domain=NonNegativeReals)
 m.SOC_ini = Var(domain=NonNegativeReals)
+
 m.bin_dch = Var(m.iIDX, domain=Binary)
+
 
 m.P_dg = Var(m.iIDX, domain = NonNegativeReals) #hourly power of diesel
 m.Pr_dg = Var(domain=NonNegativeReals) #power rating of diesel
+m.v_dg = Var(m.iIDX, domain = Binary) #1 when dg turned on at timestep
+m.w_dg = Var(m.iIDX, domain = Binary) #1 when dg turned off at timestep
+m.u_dg = Var(m.iIDX, domain=Binary) # commitment of unit (1 if unit is on)
 
-    
+ # %%    
 def obj_funct(m):
     return (m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.lifetime
 
 m.obj = Objective(rule = obj_funct, sense=minimize)
 
-def f_equilibrium(m,i):
-    return m.P_dch[i] - m.P_ch[i] + m.P_ren[i] + m.P_dg[i] == m.P_load[i] + m.P_curt[i]
+def f_equi_RES(m,i):
+    return m.P_prod[i] == m.P_RES[i] + m.P_ch[i] + m.P_curt[i]
 
-m.cstr_eq = Constraint(m.iIDX, rule = f_equilibrium)
-    
+m.cstr_eq_RES = Constraint(m.iIDX, rule = f_equi_RES)
+
+def f_equi_load(m,i):
+    return m.P_dch[i] + m.P_RES[i] + m.P_dg[i] == m.P_load[i]
+
+m.cstr_eq_load = Constraint(m.iIDX, rule = f_equi_load)
  
 
 'BATTERY CONSTRAINTS'#---------------------------------------------------------------------------------------------------------------
@@ -132,7 +166,7 @@ m.cstr_SOC_ini_lim = Constraint(rule=f_SOC_ini_lim)
 
 def f_SOC(m,i):
     if i == 0:
-        return m.SOC[i] == m.SOC_ini #add condition on final SOC of simulation
+        return m.SOC[i] == m.SOC_ini
     else:
         return m.SOC[i] == m.SOC[i-1]*(1-m.sigma) + m.P_ch[i]*m.eff_ch - m.P_dch[i]/m.eff_dch 
 
@@ -166,11 +200,27 @@ def f_Er_BES_lim(m):
 m.cstr_Er_BES_lim = Constraint(rule=f_Er_BES_lim)
 
 '----------------------------------------------------------------------------------------------------------------------------'
+# %% 
 def f_dg_lim(m,i):
     return m.P_dg[i] <= m.Pr_dg
 
 m.cstr_dg_lim = Constraint(m.iIDX, rule=f_dg_lim)
 
+def f_dg_commit(m, i):
+    return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
+
+m.cstr_dg_commit = Constraint(m.iIDX, rule=f_dg_commit)
+
+
+m.cstr_dg_uptime = ConstraintList()
+
+def g_dg_uptime(m, i):
+    return sum(m.u[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i]
+
+for i in m.iIDX:
+    if i <= len(m.iIDX) - m.UT - 1:
+        m.cstr_dg_uptime.add(sum(m.u_dg[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i])
+    
 # %%
 start = time.time()
 opt = SolverFactory("gurobi")
@@ -179,7 +229,7 @@ code_time = time.time() - start
 
 # %%
 
-P_ren = np.array([value(m.P_ren[i]) for i in m.iIDX])
+P_prod = np.array([value(m.P_prod[i]) for i in m.iIDX])
 P_load = np.array([value(m.P_load[i]) for i in m.iIDX])
      
 SOC.append(np.array([value(m.SOC[i]) for i in m.iIDX])/value(m.Er_BES))
@@ -212,27 +262,25 @@ P_curt = np.asarray(P_curt)
 P_dg = np.asarray(P_dg)
 SOC = np.asarray(SOC)
 
-# # %%
+# %%
 
-# # Here I build a dataframe to better visually show the results
-# data = pd.DataFrame({ 'Type': [ 'D', 'D+R', 'D+R+S'],
-#                      'Er_BES [MWh]': Er_BES,
-#                      'Pr_BES [MW]': Pr_BES,
-#                      'Pr_diesel [MW]': Pr_dg,
-#                      'BES cost [million euros]': BES_cost,
-#                      'Fuel cost [million euros]': dg_cost,
-#                      })
+# Here I build a dataframe to better visually show the results
+data = pd.DataFrame({'Er_BES [MWh]': Er_BES,
+                     'Pr_BES [MW]': Pr_BES,
+                     'Pr_diesel [MW]': Pr_dg,
+                     'BES cost [million euros]': BES_cost,
+                     'Fuel cost [million euros]': dg_cost,
+                     })
 
-# # data = data.reset_index(drop=True)
-# data['Total cost [million euros]'] = data['BES cost [million euros]'] + data['Fuel cost [million euros]']
+# data = data.reset_index(drop=True)
+data['Total cost [million euros]'] = data['BES cost [million euros]'] + data['Fuel cost [million euros]']
 
-# print(data.T)
-# print('Installing BESS brings', (data['Total cost [million euros]'][1]-data['Total cost [million euros]'][2])/(data['Total cost [million euros]'][1])*100, '% savings over the lifetime of the battery' )
+print(data.T)
 
 # %% DATA PLOT
 
-display_start = 0
-display_end = 24*7
+display_start = 24*30
+display_end = 24*35
 
 time_horizon = range(display_start, display_end)
     
@@ -268,10 +316,10 @@ ax_pow.set_ylabel("Power [MW]",fontsize=size_font)
 ax_pow.set_xlabel("Time [h]",fontsize=size_font)
 ax_pow.plot(time_horizon, P_load[display_start:display_end], color='black')
 ax_pow.plot(time_horizon, P_BES[0,display_start:display_end], color = 'blue')
-ax_pow.plot(time_horizon, P_ren[display_start:display_end], color = 'green')
+ax_pow.plot(time_horizon, P_prod[display_start:display_end], color = 'green')
 ax_pow.plot(time_horizon, P_curt[0,display_start:display_end], color='red')
 ax_pow.plot(time_horizon, P_dg[0,display_start:display_end], color='orange')
-ax_pow.legend(['P_Load', 'P_BES', 'P_ren', 'P_curt','P_diesel'],loc=4)
+ax_pow.legend(['P_Load', 'P_BES', 'P_RES', 'P_curt','P_diesel'],loc=4)
 
 
 ax_pow.set_title("Energy dispatch diesel + PV + BESS")

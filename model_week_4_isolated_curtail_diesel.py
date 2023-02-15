@@ -236,7 +236,7 @@ for j in range(7,8):
         
         
         start = time.time()
-        opt = SolverFactory("cbc.exe")
+        opt = SolverFactory("gurobi")
         opt.solve(m)
         code_time = time.time() - start
             

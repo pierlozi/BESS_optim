@@ -33,7 +33,7 @@ P_ren_data['Power'] = P_ren_data['Power']/1e6*7 #MW
 
 for n_month in range(1,months+1):
     
-    optim_time = 730*n_month # number of hours to display
+    optim_time = 8760 # number of hours to display
     time_range_optim = range(optim_time)
     
     price_dict = dict()
@@ -69,7 +69,7 @@ for n_month in range(1,months+1):
     m.price = Param(m.iIDX, initialize = price_dict)
     m.eff_ch = Param(initialize=sqrt(0.95)) #square root of roundtrip efficiency used in amazing reference
     m.eff_dch = Param(initialize=sqrt(0.95))
-    m.lifetime = Param(initialize=100) #years
+    m.lifetime = Param(initialize=10) #years
     m.C_P = Param(initialize=320) #$/kW
     m.C_E = Param(initialize=360) #$/kWh
     m.C_inst = Param(initialize=15) #$/kWh
