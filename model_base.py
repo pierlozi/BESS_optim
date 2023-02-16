@@ -96,6 +96,7 @@ m.gamma_min = Param(initialize=0)
 m.gamma_MAX = Param(initialize=10000) #maximum 10 (Stefan) -> for now I leave it very high to see how the system behaves
 
 m.P_BES_MAX = Param(initialize=5*max(P_load_data['Load [MW]']))
+m.Pr_dg_MIN = Param(initialize = 0.1*sum(P_load_data['Load [MW]'])/len(P_load_data['Load [MW]']))
 
 m.price_f = Param(initialize=2) #euro/L
 
@@ -107,7 +108,7 @@ m.beta = Param(initialize=0.084) #L/kW
 #minimum up and down time for diesel from
 # "Optimal sizing of battery energy storage systems in off-grid micro grids using convex optimization"
 m.UT = Param(initialize = 5) #h
-m.DT = Param(initialize = 20) #h
+m.DT = Param(initialize = 1) #h
 
 m.Pr_dg_MAX = Param(initialize = max(P_load_data['Load [MW]']))
 
@@ -206,10 +207,17 @@ def f_dg_lim(m,i):
 
 m.cstr_dg_lim = Constraint(m.iIDX, rule=f_dg_lim)
 
-def f_dg_commit(m, i):
+
+
+def f_dg_commit_sup(m, i):
     return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
 
-m.cstr_dg_commit = Constraint(m.iIDX, rule=f_dg_commit)
+m.cstr_dg_commit_sup = Constraint(m.iIDX, rule=f_dg_commit_sup)
+
+def f_dg_commit_inf(m, i):
+    return m.P_dg[i] >= m.u_dg[i]*m.Pr_dg_MIN
+
+m.cstr_dg_commit_inf = Constraint(m.iIDX, rule=f_dg_commit_inf)
 
 
 m.cstr_dg_uptime = ConstraintList()
@@ -269,6 +277,9 @@ P_dg.append(np.array([value(m.P_dg[i]) for i in m.iIDX]))
 dg_cost.append(value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*10/1e6))    
 Pr_dg.append(value(m.Pr_dg))
 u_dg = np.array([value(m.u_dg[i]) for i in m.iIDX])
+w_dg = np.array([value(m.w_dg[i]) for i in m.iIDX])
+v_dg = np.array([value(m.v_dg[i]) for i in m.iIDX])
+
 
 # LCOS = (BES_cost[n_month-1] + sum((Er_BES[n_month-1]*value(m.C_OM)*1e3/(1+value(m.IR))**(y-1)) 
 #                                       for y in range(1,value(m.lifetime)+1)))/ \
@@ -303,8 +314,8 @@ print(data.T)
 
 # %% DATA PLOT
 
-display_start = 500
-display_end = 600
+display_start = 0
+display_end= 31*24
 
 time_horizon = range(display_start, display_end)
     
@@ -336,7 +347,10 @@ time_horizon = range(display_start, display_end)
 fig, ax = plt.subplots()
 
 ax.plot(time_horizon, u_dg[display_start:display_end])
+ax.plot(time_horizon, v_dg[display_start:display_end])
+ax.plot(time_horizon, w_dg[display_start:display_end])
 ax.plot(time_horizon, P_dg[0,display_start:display_end], color='orange')
+ax.legend(['u_dg', 'v_dg', 'w_dg', 'P_dg'],loc=4)
 
 plt.show()
 
