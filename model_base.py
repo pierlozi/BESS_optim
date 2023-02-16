@@ -96,9 +96,8 @@ m.gamma_min = Param(initialize=0)
 m.gamma_MAX = Param(initialize=10000) #maximum 10 (Stefan) -> for now I leave it very high to see how the system behaves
 
 m.P_BES_MAX = Param(initialize=5*max(P_load_data['Load [MW]']))
-m.Pr_dg_MIN = Param(initialize = 0.1*sum(P_load_data['Load [MW]'])/len(P_load_data['Load [MW]']))
 
-m.price_f = Param(initialize=2) #euro/L
+m.price_f = Param(initialize=1.66) #euro/L
 
 #empirical parameters for diesel fuel consumption from 
 # "Multi objective particle swarm optimization of hybrid micro-grid system: A case study in Sweden"
@@ -110,7 +109,9 @@ m.beta = Param(initialize=0.084) #L/kW
 m.UT = Param(initialize = 5) #h
 m.DT = Param(initialize = 1) #h
 
+#max and min power rating of the diesel generator, I choose it arbitrarily
 m.Pr_dg_MAX = Param(initialize = max(P_load_data['Load [MW]']))
+m.Pr_dg_MIN = Param(initialize = 0.1*sum(P_load_data['Load [MW]'])/len(P_load_data['Load [MW]']))
 
 #with the BESS    
 m.P_ch = Var(m.iIDX, domain=NonNegativeReals)
@@ -127,6 +128,9 @@ m.bin_dch = Var(m.iIDX, domain=Binary)
 
 m.P_dg = Var(m.iIDX, domain = NonNegativeReals) #hourly power of diesel
 m.Pr_dg = Var(domain=NonNegativeReals) #power rating of diesel
+
+# these are the binary variables to be used for the min up/down times of the diesel generator
+
 m.v_dg = Var(m.iIDX, domain = Binary) #1 when dg turned on at timestep
 m.w_dg = Var(m.iIDX, domain = Binary) #1 when dg turned off at timestep
 m.u_dg = Var(m.iIDX, domain=Binary) # commitment of unit (1 if unit is on)
@@ -207,8 +211,6 @@ def f_dg_lim(m,i):
 
 m.cstr_dg_lim = Constraint(m.iIDX, rule=f_dg_lim)
 
-
-
 def f_dg_commit_sup(m, i):
     return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
 
@@ -271,7 +273,6 @@ Er_BES.append(value(m.Er_BES))
 Pr_BES.append(value(m.Pr_BES))
     
 P_curt.append(np.array([value(m.P_curt[i]) for i in m.iIDX]))
-    
 
 P_dg.append(np.array([value(m.P_dg[i]) for i in m.iIDX]))  
 dg_cost.append(value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*10/1e6))    
