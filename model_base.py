@@ -1,6 +1,8 @@
 
 # %%
 
+'''In this file i only run one scenario, with diesel, RES,  battery and load'''
+
 import time
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
@@ -15,7 +17,7 @@ time_range_optim = range(optim_time)
 
 ''' Reading the data from csv files'''
 price_data = pd.read_csv("PriceCurve_SE3_2021.csv", header = 0, nrows = 8760, sep=';') #eur/MWh
-P_load_data = pd.read_excel('load_data.xlsx', sheet_name='Yearly Load', header=0) #MW
+P_load_data = pd.read_excel('load_data.xlsx', sheet_name='Step Load', header=0) #MW
 P_ren_read = pd.read_csv('RESData_option-2.csv', header=0, nrows = 8760) #W
 
 surplus_perc = []
@@ -51,6 +53,17 @@ P_prod_dict = dict()
 for i in time_range_optim:
     P_prod_dict[i] = P_prod_data[i] #MW
 
+cycle_life = [170000, 48000, 21050, 11400, 6400, 4150, 3500, 3000, 2700, 2500]
+cycle_life_dict = dict()
+for i in range(len(cycle_life)):
+    cycle_life_dict[i]=cycle_life[i]
+
+DoD = [10, 20, 30, 40, 50, 60, 65, 70, 75, 80]
+DoD_dict = dict()
+for i in range(len(cycle_life)):
+    DoD_dict[i] = DoD[i]
+
+
     
 # ax_pow = plt.gca()
 
@@ -61,6 +74,11 @@ for i in time_range_optim:
 
 # ren_surplus = sum(P_ren_data['Power'].values[i] for i in time_range_optim)-sum(P_load_data['Load [MW]'].values[i] for i in time_range_optim)
 # print('The renewable energy surplus is of ',ren_surplus , 'MWh')
+
+
+'''Here I set the max power of the BESS'''
+P_BES_MAX = 10*max(max(P_load_data['Load [MW]']),max(P_prod_data))
+print('The BESS max power constraint imposed was of', P_BES_MAX, 'MW')
 
 ''' bess_bin is the variable that tells which type of microgrid we have, 0 = only diesel ; 1 = diesel + res; 2 = diesel + res + storage.
 I use it so that the model compiles different objective functions and constraints for the two types.'''
@@ -92,10 +110,17 @@ m.C_inst = Param(initialize=15) #$/kWh
 m.C_OM = Param(initialize=5) #$/kW
 m.sigma = Param(initialize=0.002/24) #original daily self discharge is 0,2% -> we need an hourly self discharge
 
-m.gamma_min = Param(initialize=0)
-m.gamma_MAX = Param(initialize=10000) #maximum 10 (Stefan) -> for now I leave it very high to see how the system behaves
+'''Adding the table of DoD - cycle life to implement battery degradation'''
+m.bIDX = Set(initialize = range(len(cycle_life)))
+m.DoD = Param(m.bIDX, initialize = DoD_dict)
+m.cyclelife = Param(m.bIDX, initialize = cycle_life_dict)
 
-m.P_BES_MAX = Param(initialize=5*max(P_load_data['Load [MW]']))
+
+
+m.gamma_min = Param(initialize=0)
+m.gamma_MAX = Param(initialize=100000) #maximum 10 (Stefan) -> for now I leave it very high to see how the system behaves
+
+m.P_BES_MAX = Param(initialize=P_BES_MAX)
 
 m.price_f = Param(initialize=1.66) #euro/L
 
@@ -118,10 +143,14 @@ m.P_ch = Var(m.iIDX, domain=NonNegativeReals)
 m.P_dch = Var(m.iIDX, domain = NonNegativeReals)
 m.P_RES = Var(m.iIDX, domain = NonNegativeReals)
 m.P_curt = Var(m.iIDX, domain = NonNegativeReals)
-m.Pr_BES = Var(domain=NonNegativeReals, bounds=(0, 10*max(P_load_data['Load [MW]'])))
+m.Pr_BES = Var(domain=NonNegativeReals, bounds=(0, P_BES_MAX))
 m.Er_BES = Var(domain=NonNegativeReals)
 m.SOC = Var(m.iIDX, domain=NonNegativeReals)
 m.SOC_ini = Var(domain=NonNegativeReals)
+
+'''this is the bi-linear variable used to implement the DoD-cyclelife constraint'''
+m.LEr = Var(m.bIDX, domain = NonNegativeReals)
+m.chi = Var(m.bIDX, domain = Binary)
 
 m.bin_dch = Var(m.iIDX, domain=Binary)
 
@@ -137,7 +166,7 @@ m.u_dg = Var(m.iIDX, domain=Binary) # commitment of unit (1 if unit is on)
 
  # %%    
 def obj_funct(m):
-    return (m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.lifetime
+    return (m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.lifetime/2
 
 m.obj = Objective(rule = obj_funct, sense=minimize)
 
@@ -159,10 +188,29 @@ def f_SOC_lim_up(m,i):
 
 m.cstr_SOC_lim_up = Constraint(m.iIDX, rule=f_SOC_lim_up)
 
-# def f_SOC_lim_low(m,i):
-#     return m.SOC[i]>= 0.2*m.Er_BES
+def f_SOC_lim_low(m,i):
+    return m.SOC[i]>= m.Er_BES - sum((m.DoD[b]/100*m.LEr[b]) for b in m.bIDX)
 
-# m.cstr_SOC_lim_low = Constraint(m.iIDX, rule=f_SOC_lim_low)
+m.cstr_SOC_lim_low = Constraint(m.iIDX, rule=f_SOC_lim_low)
+
+'''here I add the constraints to linearize the bi-linear variable LEr'''
+
+def f_LE_up_1(m,b):
+    return m.LEr[b] <= m.gamma_MAX*m.P_BES_MAX*m.chi[b]
+
+m.cstr_LE_up_1 = Constraint(m.bIDX, rule = f_LE_up_1)
+
+def f_LE_up_2(m, b):
+    return m.LEr[b] <= m.Er_BES + m.gamma_MAX*m.P_BES_MAX*(1-m.chi[b])
+
+m.cstr_LE_up_2 = Constraint(m.bIDX, rule = f_LE_up_2)
+
+def f_LE_dwn(m, b):
+    return m.LEr[b] >= m.Er_BES - m.gamma_MAX*m.P_BES_MAX*(1-m.chi[b])
+
+m.cstr_LE_dwn = Constraint(m.bIDX, rule = f_LE_dwn)
+
+m.cstr_chi = Constraint(expr = sum(m.chi[b] for b in m.bIDX) <= 1)
 
 def f_SOC_ini_lim(m):
     return m.SOC_ini <= m.Er_BES
@@ -271,6 +319,10 @@ P_dch.append(value(sum(m.P_dch[i] for i in m.iIDX)))
 BES_cost.append(value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)/1e6) #milions
 Er_BES.append(value(m.Er_BES))
 Pr_BES.append(value(m.Pr_BES))
+
+chi = np.array([value(m.chi[b]) for b in m.bIDX])
+LEr = np.array([value(m.LEr[b]) for b in m.bIDX])
+DoD_check = np.array([value(m.DoD[b]) for b in m.bIDX])
     
 P_curt.append(np.array([value(m.P_curt[i]) for i in m.iIDX]))
 
@@ -316,7 +368,7 @@ print(data.T)
 # %% DATA PLOT
 
 display_start = 0
-display_end= 31*24
+display_end= 24*7
 
 time_horizon = range(display_start, display_end)
     
