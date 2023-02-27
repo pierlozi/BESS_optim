@@ -181,8 +181,6 @@ def f_equi_load(m,i):
 
 m.cstr_eq_load = Constraint(m.iIDX, rule = f_equi_load)
 
-'''HEre I add the constrain on what is the penetration of RES'''
-m.cstr_RES_share = Constraint(expr = sum((m.P_dch[i]+m.P_RES[i]) for i in m.iIDX) <= 0.4*sum((m.P_load[i]) for i in m.iIDX))
 
 'BATTERY CONSTRAINTS'#---------------------------------------------------------------------------------------------------------------
 
@@ -256,7 +254,7 @@ def f_Er_BES_lim(m):
 m.cstr_Er_BES_lim = Constraint(rule=f_Er_BES_lim)
 
 '----------------------------------------------------------------------------------------------------------------------------'
-# %% 
+# %% Diesel Constraints
 def f_dg_lim(m,i):
     return m.P_dg[i] <= m.Pr_dg
 
@@ -306,35 +304,37 @@ def f_up_dwn_excl(m, i):
 m.cstr_up_dwn_excl = Constraint(m.iIDX, rule = f_up_dwn_excl)
 
 # %%
-start = time.time()
-opt = SolverFactory("gurobi")
-opt.solve(m)
-code_time = time.time() - start
+for share in [0.2,0.4,0.6,0.8]:
+    '''Here I add the constrain on what is the penetration of RES'''
+    m.cstr_RES_share = Constraint(expr = sum((m.P_dch[i]+m.P_RES[i]) for i in m.iIDX) <= share*sum((m.P_load[i]) for i in m.iIDX))
 
-# %%
+    start = time.time()
+    opt = SolverFactory("gurobi")
+    opt.solve(m)
+    code_time = time.time() - start
 
-P_prod = np.array([value(m.P_prod[i]) for i in m.iIDX])
-P_load = np.array([value(m.P_load[i]) for i in m.iIDX])
-     
-SOC.append(np.array([value(m.SOC[i]) for i in m.iIDX])/value(m.Er_BES))
-P_BES.append(np.array([(value(m.P_dch[i]) - value(m.P_ch[i]) ) for i in m.iIDX]))
-P_dch.append(value(sum(m.P_dch[i] for i in m.iIDX)))
-BES_cost.append(value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)/1e6) #milions
-Er_BES.append(value(m.Er_BES))
-Pr_BES.append(value(m.Pr_BES))
-P_RES.append(np.array([(value(m.P_RES[i]) for i in m.iIDX)]))
-# chi = np.array([value(m.chi[b]) for b in m.bIDX])
-# LEr = np.array([value(m.LEr[b]) for b in m.bIDX])
+    P_prod = np.array([value(m.P_prod[i]) for i in m.iIDX])
+    P_load = np.array([value(m.P_load[i]) for i in m.iIDX])
+        
+    SOC.append(np.array([value(m.SOC[i]) for i in m.iIDX])/value(m.Er_BES))
+    P_BES.append(np.array([(value(m.P_dch[i]) - value(m.P_ch[i]) ) for i in m.iIDX]))
+    P_dch.append(value(sum(m.P_dch[i] for i in m.iIDX)))
+    BES_cost.append(value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)/1e6) #milions
+    Er_BES.append(value(m.Er_BES))
+    Pr_BES.append(value(m.Pr_BES))
+    P_RES.append(np.array([(value(m.P_RES[i]) for i in m.iIDX)]))
+    # chi = np.array([value(m.chi[b]) for b in m.bIDX])
+    # LEr = np.array([value(m.LEr[b]) for b in m.bIDX])
 
-    
-P_curt.append(np.array([value(m.P_curt[i]) for i in m.iIDX]))
+        
+    P_curt.append(np.array([value(m.P_curt[i]) for i in m.iIDX]))
 
-P_dg.append(np.array([value(m.P_dg[i]) for i in m.iIDX]))  
-dg_cost.append(value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*10/1e6))    
-Pr_dg.append(value(m.Pr_dg))
-u_dg = np.array([value(m.u_dg[i]) for i in m.iIDX])
-w_dg = np.array([value(m.w_dg[i]) for i in m.iIDX])
-v_dg = np.array([value(m.v_dg[i]) for i in m.iIDX])
+    P_dg.append(np.array([value(m.P_dg[i]) for i in m.iIDX]))  
+    dg_cost.append(value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*10/1e6))    
+    Pr_dg.append(value(m.Pr_dg))
+    u_dg = np.array([value(m.u_dg[i]) for i in m.iIDX])
+    w_dg = np.array([value(m.w_dg[i]) for i in m.iIDX])
+    v_dg = np.array([value(m.v_dg[i]) for i in m.iIDX])
 
 
 # LCOS = (BES_cost[n_month-1] + sum((Er_BES[n_month-1]*value(m.C_OM)*1e3/(1+value(m.IR))**(y-1)) 
@@ -356,7 +356,8 @@ SOC = np.asarray(SOC)
 # %%
 
 # Here I build a dataframe to better visually show the results
-data = pd.DataFrame({'Er_BES [MWh]': Er_BES,
+data = pd.DataFrame({'RES share [%]': [20,40,50,80],
+                     'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
                      'Pr_diesel [MW]': Pr_dg,
                      'BES cost [million euros]': BES_cost,
