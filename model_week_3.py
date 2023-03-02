@@ -5,11 +5,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# price = pd.read_excel("Cycle_calculations.xlsx", sheet_name='Electricity Prices', usecols = "A") #eur/MWh
-# price_dict = dict()
+price = pd.read_excel("Cycle_calculations.xlsx", sheet_name='Electricity Prices', usecols = "A") #eur/MWh
+price_dict = dict()
 
-# for i in range(len(price)):
-#     price_dict[i]=price['Price [€/MWh]'].values[i]
+for i in range(len(price)):
+    price_dict[i]=price['Price [€/MWh]'].values[i]
     
 display_time = 8760 # number of hours to display
 time_horizon = range(display_time)

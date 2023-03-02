@@ -300,7 +300,8 @@ m.cstr_up_dwn_excl = Constraint(m.iIDX, rule = f_up_dwn_excl)
 
 # %%
 
-weight = np.linspace(0,1,num=5)
+'''Here I carry out the 'pareto' analysis. I solve the optimization problem in a cycle in which for every rerun I give a different weight to the two objective functions to see how the results vary'''
+weight = np.linspace(0.52,0.53,num=11)
 
 for w in weight:
 
@@ -353,8 +354,27 @@ data = pd.DataFrame({'Weight': weight,
 
 # data = data.reset_index(drop=True)
 data['Total cost [million euros]'] = data['BES cost [million euros]'] + data['Fuel cost [million euros]']
-
+data.to_excel('ParetoResults_3.xlsx')
 print(data.T)
+
+
+fig, ax_pareto = plt.subplots(figsize=(10,8))
+
+ax_pareto.set_title("Pareto front scalarized problem")
+ax_pareto.set_ylabel("CAPEX BESS [mil $]")
+ax_pareto.set_xlabel("OPEX DIESEL [mil $]")
+ax_pareto.plot(dg_cost, BES_cost,'bo-')
+
+# for i in range(len(Pr_BES)):
+#     ax_pareto.annotate('%.4s:' %weight[i], xy=(dg_cost[i], BES_cost[i]), xytext=(-25,0), textcoords='offset points')
+#     ax_pareto.annotate('%.4s)' %Pr_BES[i], xy=(dg_cost[i], BES_cost[i]), xytext=(35,0), textcoords='offset points')
+#     ax_pareto.annotate('(%.4s,' %Er_BES[i], xy=(dg_cost[i], BES_cost[i]))
+
+plt.grid(True)
+fig.set_size_inches(10,8)
+fig.set_dpi(200)
+
+plt.show()
 
 # %% DATA PLOT
 
