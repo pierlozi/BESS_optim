@@ -324,7 +324,7 @@ BES_cyclelife = []
 cycles_y = []
 dsctd_cash_flows = []
 
-for b in range(len(m.DoD)-5, len(m.DoD)):
+for b in range(0, len(m.DoD)):
 
     def f_SOC_lim_low(m,i):
         return m.SOC[i]>= m.Er_BES * ( 1 - m.DoD[b]/100)
@@ -413,7 +413,7 @@ dsctd_cash_flows = np.asarray(dsctd_cash_flows)
 ''' Here I do a preliminary calculation of the life of the BESS, very simple'''
 
 # Here I build a dataframe to better visually show the results
-data = pd.DataFrame({'DoD [%]': DoD[-5:],
+data = pd.DataFrame({'DoD [%]': DoD,
                      'Code time [min]': np.array(code_time)/60,
                      'Battery Life [y]': BES_cyclelife,
                      'Er_BES [MWh]': Er_BES,
@@ -427,27 +427,27 @@ data = pd.DataFrame({'DoD [%]': DoD[-5:],
 # data = data.reset_index(drop=True)
 data['Total cost [million €]'] = data['BES cost [million €]'] + data['Fuel cost [million €]']
 
-data.to_excel('LCOS_DoD_last5.xlsx')
+data.to_excel('LCOS_DoD.xlsx')
 
 print(data.T)
 
 data_SOC = pd.DataFrame(np.row_stack(SOC)).T
-data_SOC.columns = DoD[-5:]
+data_SOC.columns = DoD
 data_SOC.columns.names = ['DoD [%]']
 data_SOC.index.names = ['Hour']
 
-data_SOC.to_excel('SOC_DoD_last5.xlsx')
+data_SOC.to_excel('SOC_DoD.xlsx')
 
 print(data_SOC)
 
 dsctd_cash_flows = np.array(dsctd_cash_flows)
 data_cash = pd.DataFrame(np.row_stack(dsctd_cash_flows)).T
-data_cash.columns = DoD[-5:]
+data_cash.columns = DoD
 data_cash.columns.names = ['DoD [%]']
 data_cash['Year'] = np.linspace(1,mine_life,mine_life)
 data_cash.set_index('Year', inplace=True)
 
-data_cash.to_excel('cash_flow_last5.xlsx')
+data_cash.to_excel('cash_flow.xlsx')
 
 print(data_cash)
 # %% DATA PLOT
