@@ -8,8 +8,6 @@ import pandas as pd
 
 def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are variables (bin_var=1) or input parameters (bin_var=0) of the dispatcher
         
-    mine_life = 13
-
     optim_time = 8760 # number of hours to display
     time_range_optim = range(optim_time)
     
@@ -74,26 +72,6 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.eff_ch = pyo.Param(initialize=sqrt(0.95)) 
     m.eff_dch = pyo.Param(initialize=sqrt(0.95))
 
-    # data from 'Optimal sizing of battery energy storage in a microgrid considering capacity degradation and replacement year'
-
-    # m.floatlife = pyo.Param(initialize=10) #years
-    # m.C_P = pyo.Param(initialize=320) #$/kW
-    # m.C_E = pyo.Param(initialize=360) #$/kWh
-    # m.C_inst = pyo.Param(initialize=15) #$/kWh
-    # m.C_POM = pyo.Param(initialize=5) #$/kW operation cost related to power
-    # m.C_EOM = pyo.Param(initialize=0) #$/Mwh operation cost related to energy
-    # m.sigma = pyo.Param(initialize=0.002/24) #original daily self discharge is 0,2% -> we need an hourly self discharge
-    # m.IR = pyo.Param(initialize = 5/100)
-
-    #data from 'Projecting the Future Levelized Cost of Electricity Storage Technologies'
-    # m.floatlife = pyo.Param(initialize=10) #years
-    # m.C_P = pyo.Param(initialize=678) #$/kW
-    # m.C_E = pyo.Param(initialize=802) #$/kWh
-    # m.C_inst = pyo.Param(initialize=0) #$/kWh (the reference doesnt take into account installation)
-    # m.C_POM = pyo.Param(initialize=10) #$/kW operation cost related to power
-    # m.C_EOM = pyo.Param(initialize=3) #$/Mwh operation cost related to energy
-    # m.sigma = pyo.Param(initialize=0) #original daily self discharge is 0,2% -> we need an hourly self discharge
-    # m.IR = pyo.Param(initialize = 8/100)
 
     m.floatlife = pyo.Param(initialize= design.floatlife) #years
     m.C_P = pyo.Param(initialize= design.C_P) #$/kW
@@ -129,7 +107,6 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     #max and min power rating of the diesel generator, I choose it arbitrarily
     m.Pr_dg_MAX = pyo.Param(initialize = max(design.P_load['Load [MW]']))
     m.Pr_dg_MIN = pyo.Param(initialize = 0.1*sum(design.P_load['Load [MW]'])/len(design.P_load['Load [MW]']))
-
 
 
     #with the BESS    
@@ -326,8 +303,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
         BES_cyclelife.append(round(pyo.value(m.cyclelife)/cycles_y[-1]))
 
         cost_cash_flow  = []
-        for i in range(0, mine_life):
-            if mine_life > pyo.value(m.floatlife): #if the mine has a life longer than shelflife of battery
+        for i in range(0, design.mine_life):
+            if design.mine_life > pyo.value(m.floatlife): #if the mine has a life longer than shelflife of battery
                 if BES_cyclelife[-1] >= pyo.value(m.floatlife): #if battery has to be changed at floatlife
                     if i == 0:
                         cost_cash_flow.append(BES_capex[-1] + BES_opex[-1]) # + dg_opex[-1]) #€
