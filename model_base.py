@@ -9,7 +9,10 @@ from pyomo.opt import SolverFactory
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-    
+from matplotlib.pyplot import figure
+figure(figsize=(10, 8), dpi=150)
+plt.rcParams.update({'font.size': 15})
+
 size_font = 10
 
 optim_time = 8760 # number of hours to display
@@ -64,13 +67,26 @@ for i in time_range_optim:
 #     DoD_dict[i] = DoD[i]
 
 
-    
-# ax_pow = plt.gca()
 
-# P_load.iloc[0:len(price)].plot(kind="line", y = 'Load [MW]', ax = ax_pow)
-# P_ren.iloc[0:len(price)].plot(kind="line", y = 'Power', ax = ax_pow)
 
-# plt.show()
+ax_pow = plt.gca()
+
+P_load_data.iloc[0:24].plot(kind="line", color= 'black',y = 'Load [MW]', ax = ax_pow)
+ax_pow.set_xlabel("Hours")
+ax_pow.set_ylabel("Power [MW]")
+# P_prod_data.plot(kind="line", y = 'Power', ax = ax_pow)
+
+ax_pow.get_legend().remove()
+ax_pow.set_xticks(list(range(0, 23+1)), labels=list(range(1, 24+1)))
+
+
+
+plt.title("Daily Load Curve")
+plt.ylim([0,40])
+plt.grid()
+plt.savefig('load_curve.png',bbox_inches='tight', dpi=150)
+
+plt.show()
 
 # ren_surplus = sum(P_ren_data['Power'].values[i] for i in time_range_optim)-sum(P_load_data['Load [MW]'].values[i] for i in time_range_optim)
 # print('The renewable energy surplus is of ',ren_surplus , 'MWh')

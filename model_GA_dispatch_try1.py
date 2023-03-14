@@ -394,9 +394,9 @@ class ProblemWrapper(Problem):
 
 prob = ProblemWrapper(n_var=2, n_obj=2, xl=[0.,0.], xu = [2000.,116.])
 
-algo = NSGA2(pop_size=60)
+algo = NSGA2(pop_size=1)
 
-stop_criterium = ('n_gen',20)
+stop_criterium = ('n_gen',1)
 
 results = minimize(
     problem=prob,
