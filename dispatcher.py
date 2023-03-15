@@ -6,7 +6,7 @@ import time
 import numpy as np
 import pandas as pd
 
-def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are variables (bin_var=1) or input parameters (bin_var=0) of the dispatcher
+def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are variables (bin_var=True) or input parameters (bin_var=False) for the dispatcher
         
     optim_time = 8760 # number of hours to display
     time_range_optim = range(optim_time)
@@ -28,6 +28,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     P_thr = []
 
+    dg_capex = []
     dg_opex = []    
     Pr_dg = []
 
@@ -78,7 +79,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.C_E = pyo.Param(initialize= design.C_E) #$/kWh
     m.C_inst = pyo.Param(initialize= design.C_inst) #$/kWh (the reference doesnt take into account installation)
     m.C_POM = pyo.Param(initialize= design.C_POM) #$/kW operation cost related to power
-    m.C_EOM = pyo.Param(initialize= design.C_EOM) #$/Mwh operation cost related to energy
+    m.C_EOM = pyo.Param(initialize= design.C_EOM) #$/kWh operation cost related to energy
     m.sigma = pyo.Param(initialize= design.sigma/24) #original daily self discharge is 0,2% -> we need an hourly self discharge
     m.IR = pyo.Param(initialize = design.IR)
 
@@ -93,6 +94,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.P_BES_MAX = pyo.Param(initialize=P_BES_MAX)
 
     m.price_f = pyo.Param(initialize= design.price_f)
+    m.C_DG = pyo.Param(initialize= design.C_DG)
 
     #empirical parameters for diesel fuel consumption from 
     # "Multi objective particle swarm optimization of hybrid micro-grid system: A case study in Sweden"
@@ -147,10 +149,10 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     #  OBJ and Microgrid  
     if bin_var:
         def obj_funct(m): #7 is the expected years lifetime of the BES with 75% DoD
-            return (m.Pr_BES*(m.C_P + 10*m.C_POM) + m.Er_BES*(m.C_E+m.C_inst+10*m.C_EOM/1e3))*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.floatlife
+            return (m.Pr_BES*(m.C_P + 10*m.C_POM) + m.Er_BES*(m.C_E+m.C_inst+10*m.C_EOM))*1e3 + m.Pr_dg*m.C_DG*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.floatlife
     else:
         def obj_funct(m):
-            return m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)*m.floatlife
+            return m.Pr_dg*m.C_DG*1e3 + m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)*m.floatlife
 
     m.obj = pyo.Objective(rule = obj_funct, sense = pyo.minimize)
 
@@ -279,7 +281,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     P_BES.append(np.array([(pyo.value(m.P_dch[i]) - pyo.value(m.P_ch[i]) ) for i in m.iIDX]))
     P_dch.append(pyo.value(sum(m.P_dch[i] for i in m.iIDX)))
     BES_capex.append(pyo.value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)) #€
-    BES_opex.append(pyo.value(m.Pr_BES*m.C_POM*1e3 + m.Er_BES*m.C_EOM)) #€/year
+    BES_opex.append(pyo.value(m.Pr_BES*m.C_POM*1e3 + m.Er_BES*m.C_EOM*1e3)) #€/year
     Er_BES.append(pyo.value(m.Er_BES))
     Pr_BES.append(pyo.value(m.Pr_BES))
 
@@ -288,7 +290,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
         
     P_curt.append(np.array([pyo.value(m.P_curt[i]) for i in m.iIDX]))
 
-    P_dg.append(np.array([pyo.value(m.P_dg[i]) for i in m.iIDX]))  
+    P_dg.append(np.array([pyo.value(m.P_dg[i]) for i in m.iIDX]))
+    dg_capex.append(pyo.value(m.Pr_dg*m.C_DG*1e3)) #€
     dg_opex.append(pyo.value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)))) #€/year   
     Pr_dg.append(pyo.value(m.Pr_dg))
     # u_dg = np.array([pyo.value(m.u_dg[i]) for i in m.iIDX])
@@ -346,7 +349,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                      'Pr_BES [MW]': Pr_BES,
                      'Pr_diesel [MW]': Pr_dg,
                      'BES cost [million euros]': BES_capex[-1]/1e6 + BES_opex[-1]/1e6 ,
-                     'Fuel cost [million euros]': dg_opex[-1]/1e6,
+                     'DG cost [million euros]': dg_opex[-1]/1e6 + dg_capex[-1]/1e6,
                      'LCOS [€/MWh]': LCOS,
                      'Fuel Consumption [L]': EM_COST
                      })

@@ -12,8 +12,8 @@ from matplotlib.pyplot import figure
 
 
 ''' Reading the data from csv files'''
-P_load_data = pd.read_excel('load_data.xlsx', sheet_name='Yearly Load', header=0) #MW
-P_ren_read = pd.read_csv('RESData_option-2.csv', header=0, nrows = 8760) #W
+P_load_data = pd.read_excel('InputData/load_data.xlsx', sheet_name='Yearly Load', header=0) #MW
+P_ren_read = pd.read_csv('InputData/RESData_option-2.csv', header=0, nrows = 8760) #W
 P_ren_read['Datetime'] =  pd.to_datetime(P_ren_read['Datetime'], format = '%Y-%m-%d %H:%M:%S')
 
 RES_fac = 7
@@ -23,23 +23,33 @@ RES_fac = 7
 # C_E = 360 #$/kWh
 # C_inst = 15 #$/kWh
 # C_POM = 5 #$/kW operation cost related to power
-# C_EOM = 0 #$/Mwh operation cost related to energy
+# C_EOM = 0 #$/kWh operation cost related to energy
 # sigma = 0,2/100 #original daily self discharge is 0,2% -> we need an hourly self discharge
 # m.IR = 5/100
 
 #data from 'Projecting the Future Levelized Cost of Electricity Storage Technologies'
-C_P = 678 #$/kW
-C_E = 802 #$/kWh
-C_inst = 0 #$/kWh (the reference doesnt take into account installation)
-C_POM = 10 #$/kW operation cost related to power
-C_EOM = 3 #$/Mwh operation cost related to energy
-sigma = 0 #original daily self discharge is 0,2% -> we need an hourly self discharge
-IR = 8/100
+# C_P = 678 #$/kW
+# C_E = 802 #$/kWh
+# C_inst = 0 #$/kWh (the reference doesnt take into account installation)
+# C_POM = 10 #$/kW operation cost related to power
+# C_EOM = 3 #$/kWh operation cost related to energy
+# sigma = 0 #original daily self discharge is 0,2% -> we need an hourly self discharge
+# IR = 8/100
 
-floatlife = 10 #years
+#data from Luka
+C_P = 160 #$/kW
+C_E = 180 #$/kWh
+C_inst = 0 #$/kWh (the reference doesnt take into account installation)
+C_POM = 0 #$/kW operation cost related to power
+C_EOM = 0.125 #$/kWh operation cost related to energy
+sigma = 0 #original daily self discharge is 0,2% -> we need an hourly self discharge
+IR = 5/100
+
+floatlife = 9 #years
 mine_life = 13 #years
 
 price_f = 1.66 # €/L
+C_DG = 600 #€/kW
 
 DoD = 75 # %
 cyclelife = 2700 #cycles
@@ -50,7 +60,7 @@ load_avg = np.linspace(min(P_ren_read['Power']),max(P_ren_read['Power']), 20) # 
 load = load_avg[1]*np.ones(8760)/1e6 #MW
 P_load_data['Load [MW]'] = load 
 
-#design = microgrid(Pr_BES=20,Er_BES=250, P_load=P_load_data, P_ren=P_ren_read)
+
 design = microgrid_design.MG(Pr_BES=20, \
                    Er_BES=250, \
                    P_load=P_load_data, \
@@ -67,10 +77,11 @@ design = microgrid_design.MG(Pr_BES=20, \
                    IR= IR, \
                    DoD= DoD, \
                    cyclelife= cyclelife, \
-                   price_f= price_f)
+                   price_f= price_f, \
+                   C_DG= C_DG)
 
 df = pd.DataFrame(columns=['Load [%]','Er_BES [MWh]','Pr_BES [MW]','Pr_diesel [MW]','BES cost [million euros]',\
-                   'Fuel cost [million euros]','LCOS [€/MWh]','Fuel Consumption [L]'])
+                   'DG cost [million euros]','LCOS [€/MWh]','Fuel Consumption [L]'])
 
 i = 0
 for load in load_avg[1:3]:
@@ -90,7 +101,7 @@ data, _ = dispatcher.MyFun(design, False)
 df = pd.concat([df,data], ignore_index=True)
 df['Load [%]'][i] = (load - load_avg[1])/(load_avg[-1] - load_avg[1])*100
 
-df['Total cost [million euros]'] = df['BES cost [million euros]'] + df['Fuel cost [million euros]']
+df['Total cost [million euros]'] = df['BES cost [million euros]'] + df['DG cost [million euros]']
 
 # %%
 
@@ -102,9 +113,9 @@ ax_cost.set_ylabel("Cost [million €]")
 ax_cost.set_title("Costs")
 
 ax_cost.plot(df['Load [%]'], df['BES cost [million euros]'], color= 'black')
-ax_cost.plot(df['Load [%]'], df['Fuel cost [million euros]'], color= 'blue')
+ax_cost.plot(df['Load [%]'], df['DG cost [million euros]'], color= 'blue')
 ax_cost.plot(df['Load [%]'], df['Total cost [million euros]'], color= 'red')
-ax_cost.legend(['BES', 'Fuel', 'Total'],loc=4)
+ax_cost.legend(['BES', 'DG', 'Total'],loc=4)
 
 ax_LCOS = ax_cost.twinx()
 ax_LCOS.set_ylabel("LCOS [€/MWh]")

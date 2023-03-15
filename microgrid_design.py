@@ -2,7 +2,7 @@
 # class to build object with all the design parameters to pass to the optimizer 
 class MG(): #MG stands for microgrid
 
-    def __init__(self, Er_BES, Pr_BES, P_load, P_ren, mine_life, RES_fac, floatlife, C_P, C_E, C_inst, C_POM, C_EOM, sigma,IR, DoD, cyclelife, price_f):
+    def __init__(self, Er_BES, Pr_BES, P_load, P_ren, mine_life, RES_fac, floatlife, C_P, C_E, C_inst, C_POM, C_EOM, sigma,IR, DoD, cyclelife, price_f, C_DG):
         #when the dispatcher is run inside the GA Er_BES and Pr_BES are input parameters
         self.Er_BES = Er_BES  # [MWh] capacity rating of the BES
         self.Pr_BES = Pr_BES  # [MW] power rating of the BES
@@ -25,3 +25,4 @@ class MG(): #MG stands for microgrid
         self.cyclelife = cyclelife # [cycles] cyclelife corresponding to set DoD
 
         self.price_f = price_f # [€/L] price of diesel
+        self.C_DG = C_DG
