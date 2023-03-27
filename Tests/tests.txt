@@ -1,1 +1,22 @@
 test1 - test with cst load varying between min and max production and yearly production that varies
+
+test2.1 - test with cst load varying  between mind and max and sinusoidal res generation
+
+test2.2 - I vary the amplitude of the sinusoidal signal
+    nothing changes, the shape of the costs and LCOS curves with respect to LOAD% is always the same
+
+test2.3 - I vary the frequency
+
+test2.4 - single test with load set equal to minimum sinusoidal generation: bes should be zero
+
+        The size of the bes is indeed zero -> it is correct but it does not match with the results of test 2.1
+
+test3.1 - test with RES_factor varied so that the max/average of the yearly res production goes from 0 to 100% of load
+    ["test3_res_max.xlsx" -> test made varying with respect to max of res]
+    ["test3_res_max.xlsx" -> test made varying with respect to max of res]
+
+test3.2 - I increased the RES_factor until the minimum of the renewable generation reached the value of the cosntant load (10MW):
+        I would expect the size of the battery to be zero as no energy needs to be stored because all the load should be supplied by the RES
+        The size of the battery is indeed zero
+    
+    

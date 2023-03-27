@@ -148,8 +148,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     #  OBJ and Microgrid  
     if bin_var:
-        def obj_funct(m): #7 is the expected years lifetime of the BES with 75% DoD
-            return (m.Pr_BES*(m.C_P + 10*m.C_POM) + m.Er_BES*(m.C_E+m.C_inst+10*m.C_EOM))*1e3 + m.Pr_dg*m.C_DG*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.floatlife
+        def obj_funct(m): 
+            return (m.Pr_BES*(m.C_P + m.floatlife*m.C_POM) + m.Er_BES*(m.C_E+m.C_inst+m.floatlife*m.C_EOM))*1e3 + m.Pr_dg*m.C_DG*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.floatlife
     else:
         def obj_funct(m):
             return m.Pr_dg*m.C_DG*1e3 + m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)*m.floatlife
@@ -275,8 +275,11 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     P_prod = np.array([pyo.value(m.P_prod[i]) for i in m.iIDX])
     P_load = np.array([pyo.value(m.P_load[i]) for i in m.iIDX])
-        
-    SOC.append(np.array([pyo.value(m.SOC[i]) for i in m.iIDX])/pyo.value(m.Er_BES))
+
+    if pyo.value(m.Er_BES) != 0:
+        SOC.append(np.array([pyo.value(m.SOC[i]) for i in m.iIDX])/pyo.value(m.Er_BES))
+    else:
+        SOC.append(np.array([pyo.value(m.SOC[i]) for i in m.iIDX]))
 
     P_BES.append(np.array([(pyo.value(m.P_dch[i]) - pyo.value(m.P_ch[i]) ) for i in m.iIDX]))
     P_dch.append(pyo.value(sum(m.P_dch[i] for i in m.iIDX)))
@@ -343,7 +346,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     else:
         LCOS = float('NaN')
 
-    EM_COST = pyo.value(sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))
+    fuel_COST = pyo.value(sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))
     
     data = pd.DataFrame({'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
@@ -351,7 +354,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                      'BES cost [million euros]': BES_capex[-1]/1e6 + BES_opex[-1]/1e6 ,
                      'DG cost [million euros]': dg_opex[-1]/1e6 + dg_capex[-1]/1e6,
                      'LCOS [€/MWh]': LCOS,
-                     'Fuel Consumption [L]': EM_COST
+                     'Fuel Consumption [L]': fuel_COST
                      })
     
     data_time = pd.DataFrame({'Datetime': design.P_ren['Datetime'],
