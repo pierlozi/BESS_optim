@@ -19,7 +19,9 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     SOC = []
     P_BES = []
+    E_dch = []
     P_dch = []
+    P_ch = []
     P_dg = []
     P_curt = []
 
@@ -70,8 +72,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     #the charging and dischargin efficiencies are calculeted using a roundrtip efficiency value
     #of 0.95 (Reference: Optimal sizing of battery energy storage in a microgrid considering capacity degradation and replacement year)
-    m.eff_ch = pyo.Param(initialize=sqrt(0.95)) 
-    m.eff_dch = pyo.Param(initialize=sqrt(0.95))
+    m.eff_ch = pyo.Param(initialize=sqrt(design.eff)) 
+    m.eff_dch = pyo.Param(initialize=sqrt(design.eff))
 
 
     m.floatlife = pyo.Param(initialize= design.floatlife) #years
@@ -282,7 +284,9 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
         SOC.append(np.array([pyo.value(m.SOC[i]) for i in m.iIDX]))
 
     P_BES.append(np.array([(pyo.value(m.P_dch[i]) - pyo.value(m.P_ch[i]) ) for i in m.iIDX]))
-    P_dch.append(pyo.value(sum(m.P_dch[i] for i in m.iIDX)))
+    E_dch.append(pyo.value(sum(m.P_dch[i] for i in m.iIDX)))
+    P_dch.append(np.array([pyo.value(m.P_dch[i]) for i in m.iIDX]))
+    P_ch.append(np.array([pyo.value(m.P_ch[i]) for i in m.iIDX]))
     BES_capex.append(pyo.value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)) #€
     BES_opex.append(pyo.value(m.Pr_BES*m.C_POM*1e3 + m.Er_BES*m.C_EOM*1e3)) #€/year
     Er_BES.append(pyo.value(m.Er_BES))
@@ -303,7 +307,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     P_thr.append(abs(P_BES[-1]))
 
-    if pyo.value(m.Er_BES) != 0 and pyo.value(m.Pr_BES) != 0:
+    if pyo.value(m.Er_BES) != 0 and pyo.value(m.Pr_BES) != 0: #to avoid division by zero
         cycles_y.append(sum(P_thr[-1])/Er_BES[-1])
 
         BES_cyclelife.append(round(pyo.value(m.cyclelife)/cycles_y[-1]))
@@ -340,7 +344,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
         P_dch_dsctd = [] #MWh
         for i in range(len(cost_cash_flow)):
-            P_dch_dsctd.append(P_dch[-1]/(1+pyo.value(m.IR))**i)
+            P_dch_dsctd.append(E_dch[-1]/(1+pyo.value(m.IR))**i)
 
         LCOS = sum(cost_dsctd)/sum(P_dch_dsctd) #€/MWh
     else:
@@ -352,13 +356,17 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                      'Pr_BES [MW]': Pr_BES,
                      'Pr_diesel [MW]': Pr_dg,
                      'BES cost [million euros]': BES_capex[-1]/1e6 + BES_opex[-1]/1e6 ,
-                     'DG cost [million euros]': dg_opex[-1]/1e6 + dg_capex[-1]/1e6,
+                     'DG cost [million euros]': dg_capex[-1]/1e6,
                      'LCOS [€/MWh]': LCOS,
-                     'Fuel Consumption [L]': fuel_COST
+                     'Fuel Cost [million euros]': dg_opex[-1]/1e6,
+                     'Total Cost [million euros]': BES_capex[-1]/1e6 + BES_opex[-1]/1e6 + dg_capex[-1]/1e6 + dg_opex[-1]/1e6,
+                     'Lifetime cost [million euros]': pyo.value(m.obj)/1e6
                      })
     
     data_time = pd.DataFrame({'Datetime': design.P_ren['Datetime'],
                               'SOC': SOC[-1],
+                              'P_ch': P_ch[-1],
+                              'P_dch': P_dch[-1],
                               'P_BES': P_BES[-1],
                               'P_curt': P_curt[-1],
                               'P_dg': P_dg[-1],

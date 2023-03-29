@@ -34,7 +34,7 @@ for period in periods:
     design = microgrid_design.MG(P_ren=P_ren_read, RES_fac=1)
 
     df = pd.DataFrame(columns=['Load [%]','Er_BES [MWh]','Pr_BES [MW]','Pr_diesel [MW]','BES cost [million euros]',\
-                    'DG cost [million euros]','LCOS [€/MWh]','Fuel Consumption [L]', 'Total cost [million euros]'])
+                    'DG cost [million euros]','LCOS [€/MWh]','Fuel Cost [million euros]', 'Total cost [million euros]'])
 
     i = 0
     for load in load_avg[0:]:

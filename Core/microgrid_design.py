@@ -41,7 +41,7 @@ import pandas as pd
 # class to build object with all the design parameters to pass to the optimizer 
 class MG(): #MG stands for microgrid
 
-    def __init__(self, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() , P_ren=pd.DataFrame(), mine_life=13, RES_fac=7, floatlife=9, C_P=160, C_E=180, C_inst=0, C_POM=0, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, price_f=1.66, C_DG=600):
+    def __init__(self, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() , P_ren=pd.DataFrame(), mine_life=13, RES_fac=1, floatlife=7, C_P=320, C_E=360, C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, eff = 0.95, price_f=1.66, C_DG=400):
         #when the dispatcher is run inside the GA Er_BES and Pr_BES are input parameters
         self.Er_BES = Er_BES  # [MWh] capacity rating of the BES
         self.Pr_BES = Pr_BES  # [MW] power rating of the BES
@@ -62,6 +62,7 @@ class MG(): #MG stands for microgrid
 
         self.DoD = DoD # [%] Depth of Discharge at which battery works
         self.cyclelife = cyclelife # [cycles] cyclelife corresponding to set DoD
+        self.eff = eff
 
         self.price_f = price_f # [€/L] price of diesel
         self.C_DG = C_DG

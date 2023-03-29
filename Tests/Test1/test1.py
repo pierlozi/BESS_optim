@@ -33,7 +33,7 @@ for sim_num in range(5,10):
     design = microgrid_design.MG(P_ren=P_ren_read, RES_fac=1)
 
     df = pd.DataFrame(columns=['Load [%]','Er_BES [MWh]','Pr_BES [MW]','Pr_diesel [MW]','BES cost [million euros]',\
-                    'DG cost [million euros]','LCOS [€/MWh]','Fuel Consumption [L]', 'Total cost [million euros]'])
+                    'DG cost [million euros]','LCOS [€/MWh]','Fuel Cost [million euros]', 'Total cost [million euros]'])
 
     i = 0
     for load in load_avg[0:]:
@@ -45,7 +45,7 @@ for sim_num in range(5,10):
         df = pd.concat([df,data], ignore_index=True)
         df.loc[i, 'Load [%]'] = (load - load_avg[0])/(load_avg[-1] -  load_avg[0])*100
 
-        df['Total cost [million euros]'] = df['BES cost [million euros]'] + df['DG cost [million euros]']
+        df['Total cost [million euros]'] = df['BES cost [million euros]'] + df['DG cost [million euros]'] + df['Fuel Cost [million euros]']
         i += 1 
 
     df.set_index('Load [%]', inplace=True)
@@ -54,7 +54,7 @@ for sim_num in range(5,10):
 
 # concatenate the individual dataframes into a single multi-index dataframe
 df_tot = pd.concat(dfs)
-df_tot['Total cost [million euros]'] = df_tot['BES cost [million euros]'] + df_tot['DG cost [million euros]']
+df_tot['Total cost [million euros]'] = df_tot['BES cost [million euros]'] + df_tot['DG cost [million euros]'] + df_tot['Fuel Cost [million euros]']
 df_tot.to_excel('test1_try1.xlsx')
 # display the merged dataframe
 

@@ -1,6 +1,9 @@
 test1 - test with cst load varying between min and max production and yearly production that varies
 
 test2.1 - test with cst load varying  between mind and max and sinusoidal res generation
+    The results did not seem to make sense because I was not considering that the diesel generator has
+    installation costs that are influential in the optimization. 
+    The installation costs of DG are actually not that influential
 
 test2.2 - I vary the amplitude of the sinusoidal signal
     nothing changes, the shape of the costs and LCOS curves with respect to LOAD% is always the same
@@ -11,6 +14,17 @@ test2.4 - single test with load set equal to minimum sinusoidal generation: bes 
 
         The size of the bes is indeed zero -> it is correct but it does not match with the results of test 2.1
 
+test2.5 - test with the cst load set as maximum of the sinusoidal generation and varying the fuel price
+        After a certain fuel price the power and energy ratings of stuff don't change
+        They have distinct formulas:
+        For 
+            P_prod(t) = A + B*sin(2pi/T*t)
+            P_load(t) = (A+B)*C
+        we have that
+            Pr_BES = B 
+            Er_BES = \integral_0^(T/2){P_prod(t)-A}dt = B*T/pi
+            P_BES(t) = -B*sin(2pi/T*t)
+            P_dg(t) = P_load(t) - A = (A+B)*C - A
 test3.1 - test with RES_factor varied so that the max/average of the yearly res production goes from 0 to 100% of load
     ["test3_res_max.xlsx" -> test made varying with respect to max of res]
     ["test3_res_max.xlsx" -> test made varying with respect to max of res]
