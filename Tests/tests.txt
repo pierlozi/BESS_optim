@@ -1,9 +1,11 @@
-test1 - test with cst load varying between min and max production and yearly production that varies
+test1 - test with cst load varying between min and max production and yearly production
 
 test2.1 - test with cst load varying  between mind and max and sinusoidal res generation
     The results did not seem to make sense because I was not considering that the diesel generator has
     installation costs that are influential in the optimization. 
-    The installation costs of DG are actually not that influential
+    The installation costs of DG are actually not that influential.
+    The influential factors are more likely other parameters such as fuel price, float life of the battery, installation cost of battery
+
 
 test2.2 - I vary the amplitude of the sinusoidal signal
     nothing changes, the shape of the costs and LCOS curves with respect to LOAD% is always the same
@@ -33,4 +35,11 @@ test3.2 - I increased the RES_factor until the minimum of the renewable generati
         I would expect the size of the battery to be zero as no energy needs to be stored because all the load should be supplied by the RES
         The size of the battery is indeed zero
     
+test4.1 - to check if simulating for shorter time horizon (with the sinusoidal eneratino and the constant load) wuold affect the results
+        -> it does not affect the results
+
+test4.1bis - to check if simulating for shorter time horizon with real production affects the results
+
+test4.2 - to check how much slower is the dispatcher if I implement all the constraints of the DG
+        ->
     
