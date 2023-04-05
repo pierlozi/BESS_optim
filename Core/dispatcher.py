@@ -8,8 +8,8 @@ import pandas as pd
 
 def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are variables (bin_var=True) or input parameters (bin_var=False) for the dispatcher
         
-    optim_time = 8760 # number of hours to display
-    time_range_optim = range(optim_time)
+    optim_horiz = design.optim_horiz # number of hours to optmize (optmization horizon)
+    time_range_optim = range(optim_horiz)
     
     '''Initializing the lists of all the paramters and variables which values I want to store'''
     code_time = []
@@ -151,10 +151,10 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     #  OBJ and Microgrid  
     if bin_var:
         def obj_funct(m): 
-            return (m.Pr_BES*(m.C_P + m.floatlife*m.C_POM) + m.Er_BES*(m.C_E+m.C_inst+m.floatlife*m.C_EOM))*1e3 + m.Pr_dg*m.C_DG*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.floatlife
+            return (m.Pr_BES*(m.C_P + m.floatlife*m.C_POM) + m.Er_BES*(m.C_E+m.C_inst+m.floatlife*m.C_EOM))*1e3 + m.Pr_dg*m.C_DG*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.floatlife*8760/len(m.iIDX)
     else:
         def obj_funct(m):
-            return m.Pr_dg*m.C_DG*1e3 + m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)*m.floatlife
+            return m.Pr_dg*m.C_DG*1e3 + m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)*m.floatlife*8760/len(m.iIDX)
 
     m.obj = pyo.Objective(rule = obj_funct, sense = pyo.minimize)
 
@@ -223,6 +223,11 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
         return m.P_dg[i] <= m.Pr_dg
 
     m.cstr_dg_lim = pyo.Constraint(m.iIDX, rule=f_dg_lim)
+
+    def f_dg_lim_dwn(m,i):
+        return m.P_dg[i] >= 0.2*m.Pr_dg
+
+    m.cstr_dg_lim_dwn = pyo.Constraint(m.iIDX, rule=f_dg_lim_dwn)
 
     # def f_dg_commit_sup(m, i):
     #     return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
@@ -299,7 +304,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     P_dg.append(np.array([pyo.value(m.P_dg[i]) for i in m.iIDX]))
     dg_capex.append(pyo.value(m.Pr_dg*m.C_DG*1e3)) #€
-    dg_opex.append(pyo.value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)))) #€/year   
+    dg_opex.append(pyo.value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/optim_horiz)) #€/year   
     Pr_dg.append(pyo.value(m.Pr_dg))
     # u_dg = np.array([pyo.value(m.u_dg[i]) for i in m.iIDX])
     # w_dg = np.array([pyo.value(m.w_dg[i]) for i in m.iIDX])
@@ -350,7 +355,6 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     else:
         LCOS = float('NaN')
 
-    fuel_COST = pyo.value(sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))
     
     data = pd.DataFrame({'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
@@ -363,7 +367,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                      'Lifetime cost [million euros]': pyo.value(m.obj)/1e6
                      })
     
-    data_time = pd.DataFrame({'Datetime': design.P_ren['Datetime'],
+    data_time = pd.DataFrame({'Datetime': design.P_ren['Datetime'][0:optim_horiz],
                               'SOC': SOC[-1],
                               'P_ch': P_ch[-1],
                               'P_dch': P_dch[-1],
