@@ -32,16 +32,16 @@ design.P_load['Load [MW]'] = [P_ren_read['Power'].min()+0.45*(P_ren_read['Power'
 df = pd.DataFrame()
 dfs_time = []
 
-sim_times = [8760, 9*30*24, 6*30*24, 3*30*24, 30*24, 14*24, 7*24, 24]
+sim_horizons = [8760, 9*30*24, 6*30*24, 3*30*24, 30*24, 14*24, 7*24, 24]
 
 i = 0
-for sim_time in sim_times:
-    design.optim_time = sim_time
+for sim_horiz in sim_horizons:
+    design.optim_horiz = sim_horiz
     start = time.time()
     data, data_time = dispatcher.MyFun(design, True)
     deltaT = time.time() - start
     df = pd.concat([df,data], ignore_index=True)
-    df.loc[i, 'Simulation horizon [s]'] = sim_time
+    df.loc[i, 'Simulation horizon [s]'] = sim_horiz
     df.loc[i, 'Simulation time [s]'] = deltaT
     data_time.set_index('Datetime', inplace=True)
     data_time.index = pd.MultiIndex.from_product([[df.loc[i, 'Simulation horizon [s]']], data_time.index], names=['Simulation horizon [s]', 'Datetime'])
@@ -53,3 +53,31 @@ df.set_index('Simulation horizon [s]', inplace=True)
 df.insert(loc=0, column='Simulation time [s]', value=df.pop('Simulation time [s]'))
 
 df.describe() #don't look at the LCOS, it does not make sense
+
+#%% To save table as a Microsoft Word table
+from docx import Document
+
+# Create a new Word document
+doc = Document()
+
+# Add a table to the document
+table = doc.add_table(rows=df.shape[0]+1, cols=df.shape[1]+1)
+table.style = 'Table Grid'
+
+# Add the header row
+for i, column in enumerate(df.columns):
+    table.cell(0, i+1).text = column
+
+k = 0
+# Add the data rows
+for i, row in df.iterrows():
+    table.cell(k+1,0).text = str(int(i))
+    for j, value in enumerate(row):
+        table.cell(k+1, j+1).text = str(round(value,2))
+    k += 1
+
+table.cell(0,0).text = df.index.name
+
+# Save the document
+doc.save('test4_1_table.docx')
+# %%

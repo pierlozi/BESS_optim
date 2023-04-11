@@ -27,16 +27,16 @@ design.P_load['Load [MW]'] = [P_ren_read['Power'].min()+0.5*(P_ren_read['Power']
 df = pd.DataFrame()
 dfs_time = []
 
-sim_times = [8760, 9*30*24, 6*30*24, 3*30*24, 30*24, 14*24, 7*24, 24]
+sim_horizs = [8760, 9*30*24, 6*30*24, 3*30*24, 30*24, 14*24, 7*24, 24]
 
 i = 0
-for sim_time in sim_times:
-    design.optim_time = sim_time
+for sim_horiz in sim_horizs:
+    design.optim_horiz = sim_horiz
     start = time.time()
     data, data_time = dispatcher.MyFun(design, True)
     deltaT = time.time() - start
     df = pd.concat([df,data], ignore_index=True)
-    df.loc[i, 'Simulation horizon [s]'] = sim_time
+    df.loc[i, 'Simulation horizon [s]'] = sim_horiz
     df.loc[i, 'Simulation time [s]'] = deltaT
     data_time.set_index('Datetime', inplace=True)
     data_time.index = pd.MultiIndex.from_product([[df.loc[i, 'Simulation horizon [s]']], data_time.index], names=['Simulation horizon [s]', 'Datetime'])

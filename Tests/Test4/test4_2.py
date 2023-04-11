@@ -70,7 +70,7 @@ ax.plot(data_time['P_BES'][24*day_start_display:24*(day_start_display+days_displ
 ax.set_ylabel("Power [MW]")
 ax.set_xticks(ax.get_xticks())
 ax.set_xticklabels(ax.get_xticks(), ha='center')
-ax.xaxis.set_major_locator(DayLocator())
+ax.xaxis.set_major_locator(MonthLocator())
 ax.xaxis.set_major_formatter(DateFormatter('%d/%m'))
 
 ax_SOC = ax.twinx()
