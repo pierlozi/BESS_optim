@@ -8,7 +8,7 @@ import pandas as pd
 
 def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are variables (bin_var=True) or input parameters (bin_var=False) for the dispatcher
         
-    optim_horiz = design.optim_horiz # number of hours to display
+    optim_horiz = design.optim_horiz # number of hours to optmize (optmization horizon)
     time_range_optim = range(optim_horiz)
     
     '''Initializing the lists of all the paramters and variables which values I want to store'''
@@ -48,7 +48,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
         
     P_prod_dict = dict()
     for i in time_range_optim:
-        P_prod_dict[i] = P_prod_data[i] #MW
+        P_prod_dict[i] = P_prod_data.iloc[i] #MW
 
 
     '''Here I set the max power of the BESS'''
@@ -62,6 +62,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     #m.iIDX is the set which keeps the time in the simulation
     m.iIDX = pyo.Set(initialize = time_range_optim)
+    m.BES_life = pyo.Set(initialize = range(design.floatlife))
 
     '''importing data in the pyomo framewrok''' 
     m.P_load = pyo.Param(m.iIDX,initialize=P_load_dict)
@@ -76,7 +77,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.eff_dch = pyo.Param(initialize=sqrt(design.eff))
 
 
-    m.floatlife = pyo.Param(initialize= design.floatlife) #years
+    m.floatlife = pyo.Param(initialize = design.floatlife) #years
     m.C_P = pyo.Param(initialize= design.C_P) #$/kW
     m.C_E = pyo.Param(initialize= design.C_E) #$/kWh
     m.C_inst = pyo.Param(initialize= design.C_inst) #$/kWh (the reference doesnt take into account installation)
@@ -142,20 +143,23 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     # # these are the binary variables to be used for the min up/down times of the diesel generator
 
-    m.v_dg = pyo.Var(m.iIDX, domain = pyo.Binary) #1 when dg turned on at timestep
-    m.w_dg = pyo.Var(m.iIDX, domain = pyo.Binary) #1 when dg turned off at timestep
-    m.u_dg = pyo.Var(m.iIDX, domain= pyo.Binary) # commitment of unit (1 if unit is on)
+    # m.v_dg = pyo.Var(m.iIDX, domain = Binary) #1 when dg turned on at timestep
+    # m.w_dg = pyo.Var(m.iIDX, domain = Binary) #1 when dg turned off at timestep
+    # m.u_dg = pyo.Var(m.iIDX, domain=Binary) # commitment of unit (1 if unit is on)
 
 
 
     #  OBJ and Microgrid  
     if bin_var:
         def obj_funct(m): 
-            return (m.Pr_BES*(m.C_P + m.floatlife*m.C_POM) + m.Er_BES*(m.C_E+m.C_inst+m.floatlife*m.C_EOM))*1e3 + m.Pr_dg*m.C_DG*1e3 + (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*m.floatlife*8760/len(m.iIDX)
+            return (m.Pr_BES*(m.C_P + m.C_POM*sum((1/(1+m.IR)**y) for y in m.BES_life)) +\
+                    m.Er_BES*(m.C_E + m.C_inst + m.C_EOM*sum((1/(1+m.IR)**y) for y in m.BES_life)))*1e3 +\
+                    m.Pr_dg*m.C_DG*1e3 +\
+                   (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.BES_life)
     else:
         def obj_funct(m):
-            return m.Pr_dg*m.C_DG*1e3 + m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX)*m.floatlife*8760/len(m.iIDX)
-
+            return m.Pr_dg*m.C_DG*1e3 +\
+                  (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.BES_life)
     m.obj = pyo.Objective(rule = obj_funct, sense = pyo.minimize)
 
     def f_equi_RES(m,i):
@@ -229,56 +233,55 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     m.cstr_dg_lim_dwn = pyo.Constraint(m.iIDX, rule=f_dg_lim_dwn)
 
-    def f_dg_commit_sup(m, i):
-        return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
+    # def f_dg_commit_sup(m, i):
+    #     return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
 
-    m.cstr_dg_commit_sup = pyo.Constraint(m.iIDX, rule=f_dg_commit_sup)
+    # m.cstr_dg_commit_sup = pyo.Constraint(m.iIDX, rule=f_dg_commit_sup)
 
-    def f_dg_commit_inf(m, i):
-        return m.P_dg[i] >= m.u_dg[i]*m.Pr_dg_MIN
+    # def f_dg_commit_inf(m, i):
+    #     return m.P_dg[i] >= m.u_dg[i]*m.Pr_dg_MIN
 
-    m.cstr_dg_commit_inf = pyo.Constraint(m.iIDX, rule=f_dg_commit_inf)
+    # m.cstr_dg_commit_inf = pyo.Constraint(m.iIDX, rule=f_dg_commit_inf)
 
 
-    m.cstr_dg_uptime = pyo.ConstraintList()
+    # m.cstr_dg_uptime = pyo.ConstraintList()
 
-    # def f_dg_uptime(m, i):
-    #     return sum(m.u[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i]
+    # # def f_dg_uptime(m, i):
+    # #     return sum(m.u[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i]
 
-    for i in m.iIDX:
-        if i <= len(m.iIDX) - m.UT - 1:
-            m.cstr_dg_uptime.add(sum(m.u_dg[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i])
+    # for i in m.iIDX:
+    #     if i <= len(m.iIDX) - m.UT - 1:
+    #         m.cstr_dg_uptime.add(sum(m.u_dg[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i])
 
-    m.cstr_dg_dwntime = pyo.ConstraintList()
+    # m.cstr_dg_dwntime = pyo.ConstraintList()
 
-    # def f_dg_dwntime(m, i):
-    #     return sum((1 - m.u_dg[j]) for j in range(i, i + m.UT) ) >= m.DT*m.w_dg[i]
+    # # def f_dg_dwntime(m, i):
+    # #     return sum((1 - m.u_dg[j]) for j in range(i, i + m.UT) ) >= m.DT*m.w_dg[i]
 
-    for i in m.iIDX:
-        if i <= len(m.iIDX) - m.DT - 1:
-            m.cstr_dg_dwntime.add(sum((1 - m.u_dg[j]) for j in range(i, i + m.DT) ) >= m.DT*m.w_dg[i]
-    )   
-    m.cstr_up_dwn_commit = pyo.ConstraintList()
+    # for i in m.iIDX:
+    #     if i <= len(m.iIDX) - m.DT - 1:
+    #         m.cstr_dg_dwntime.add(sum((1 - m.u_dg[j]) for j in range(i, i + m.DT) ) >= m.DT*m.w_dg[i]
+    # )   
+    # m.cstr_up_dwn_commit = pyo.ConstraintList()
 
-    # def f_up_dwn_commit(m, i):
-    #     return m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1]
+    # # def f_up_dwn_commit(m, i):
+    # #     return m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1]
 
-    for i in m.iIDX:
-        if i > 0:
-            m.cstr_up_dwn_commit.add(m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1])
+    # for i in m.iIDX:
+    #     if i > 0:
+    #         m.cstr_up_dwn_commit.add(m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1])
 
-    def f_up_dwn_excl(m, i):
-        return m.v_dg[i] + m.w_dg[i] <= 1
+    # def f_up_dwn_excl(m, i):
+    #     return m.v_dg[i] + m.w_dg[i] <= 1
 
-    m.cstr_up_dwn_excl = pyo.Constraint(m.iIDX, rule = f_up_dwn_excl)
+    # m.cstr_up_dwn_excl = pyo.Constraint(m.iIDX, rule = f_up_dwn_excl)
 
     # Initializing results lists
 
     start = time.time()
     opt = pyo.SolverFactory("gurobi")
     opt.solve(m)
-    code_time.append(time.time() - start)
-
+    code_time.append( time.time() - start)
 
 
     P_prod = np.array([pyo.value(m.P_prod[i]) for i in m.iIDX])

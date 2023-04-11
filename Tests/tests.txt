@@ -42,4 +42,9 @@ test4.1bis - to check if simulating for shorter time horizon with real productio
 
 test4.2 - to check how much slower is the dispatcher if I implement all the constraints of the DG
         ->
-    
+
+test4.3 - to check how for varying optimization horizons how much does having constraints for the DGS affect the computational time
+
+test_dispatcher_dsctd_try - to try the new version of the dispatcher which has the discounted objective function
+        it works
+
