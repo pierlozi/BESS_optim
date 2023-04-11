@@ -33,7 +33,7 @@
 # price_f = 1.66 # €/L
 # C_DG = 600 #€/kW
 
-# DoD = 75 # %
+# DoD = [] # %
 # cyclelife = 2700 #cycles
 
 #%% class
@@ -41,13 +41,15 @@ import pandas as pd
 # class to build object with all the design parameters to pass to the optimizer 
 class MG(): #MG stands for microgrid
 
-    def __init__(self, optim_horiz = 8760, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() , P_ren=pd.DataFrame(), mine_life=13, RES_fac=1, floatlife=7, C_P=320, C_E=360, C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, eff = 0.95, price_f=1.66, C_DG=400):
+    def __init__(self, optim_horiz = 8760, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() , P_ren=pd.DataFrame(), mine_life=13, RES_fac=1, floatlife=7, C_P=160, C_E=180, C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, eff = 0.95, price_f=1.66, C_DG=600, SOC_w = 0):
         
         self.optim_horiz = optim_horiz
         
         #when the dispatcher is run inside the GA Er_BES and Pr_BES are input parameters
         self.Er_BES = Er_BES  # [MWh] capacity rating of the BES
         self.Pr_BES = Pr_BES  # [MW] power rating of the BES
+
+        self.SOC_w = SOC_w    #[-] the weight given to the SOC inclusion in the objective function
 
         self.P_load = P_load  # [MW] dictionary P_load['Load [MW]'] with the yearly load profile 
         self.P_ren = P_ren    # [W] dictionary P_ren['Power'] with yearly RES generation

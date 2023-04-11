@@ -48,3 +48,8 @@ test4.3 - to check how for varying optimization horizons how much does having co
 test_dispatcher_dsctd_try - to try the new version of the dispatcher which has the discounted objective function
         it works
 
+test5.1 - to check how the system behave if I implement an objective function which penalizes the system when the battery is not fully charged, with the 
+          use of a weight that varies between 0 and 1
+
+TEST6
+ testGA_DoD - first test in which te GA has three variables, capacity rating power rating and DoD of the battery
