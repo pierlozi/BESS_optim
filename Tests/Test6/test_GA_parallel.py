@@ -14,11 +14,13 @@ from pymoo.optimize import minimize
 from pymoo.core.problem import Problem
 from pymoo.core.problem import ElementwiseProblem
 
+
 from pymoo.operators.sampling.rnd import IntegerRandomSampling
 from pymoo.termination import get_termination
 
 from pymoo.core.problem import StarmapParallelization
 
+from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 
 import numpy as np
@@ -26,7 +28,8 @@ import pandas as pd
 
 #I am parallelizing the code in a thread pool of as many threads as CPU cores there are
 #pool = ThreadPool(os.cpu_count()) 
-pool = ThreadPool(8)
+#n_threads = os.cpu_count()
+pool = ThreadPool()
 
 class MyProblem(Problem):
 
@@ -90,14 +93,13 @@ problem = MyProblem(design = microgrid_design.MG(P_load=P_load_data, \
                                                 )
                     )
 
-#%%
 
-algorithm = NSGA2(pop_size=3,
+
+algorithm = NSGA2(pop_size=2,
                   sampling = IntegerRandomSampling(),
                   eliminate_duplicates=True
                   )
 
-#%%
 
 results = minimize(problem, 
                algorithm,

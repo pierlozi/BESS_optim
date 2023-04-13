@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 
 def MyFun(design, bin_var, Er, Pr, DoD): #bin_var is to tell if power and energy rating are variables (bin_var=True) or input parameters (bin_var=False) for the dispatcher
-        
+    
+    print("Started.")
+
     cyclelifes = [170000, 48000, 21050, 11400, 6400, 4150, 3500, 3000, 2700, 2500]
     DoDs = [10, 20, 30, 40, 50, 60, 65, 70, 75, 80]
 
@@ -65,7 +67,7 @@ def MyFun(design, bin_var, Er, Pr, DoD): #bin_var is to tell if power and energy
     ''' bess_bin is the variable that tells which type of microgrid we have, 0 = only diesel ; 1 = diesel + res; 2 = diesel + res + storage.
     I use it so that the model compiles different objective functions and constraints for the two types.'''
 
-
+    
     m = pyo.ConcreteModel()
 
     #m.iIDX is the set which keeps the time in the simulation
@@ -292,7 +294,7 @@ def MyFun(design, bin_var, Er, Pr, DoD): #bin_var is to tell if power and energy
     opt = pyo.SolverFactory("gurobi")
     opt.solve(m)
     code_time.append( time.time() - start)
-
+    
 
     P_prod = np.array([pyo.value(m.P_prod[i]) for i in m.iIDX])
     P_load = np.array([pyo.value(m.P_load[i]) for i in m.iIDX])
@@ -392,4 +394,7 @@ def MyFun(design, bin_var, Er, Pr, DoD): #bin_var is to tell if power and energy
                               'P_load': P_load
 
                      })
+    
+    print("Done.")
+
     return data['LCOS [€/MWh]'].values[0], data['Lifetime cost [million euros]'].values[0]

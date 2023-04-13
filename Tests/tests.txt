@@ -1,3 +1,14 @@
+CORE
+dispatcher - base version of the dispatcher
+dispatcher_dsctd - dispatcher in which I have implemented the discounting of the objective function
+dispatcher_GA - disptacher modified so that I can use it as inner loop of genetic algorithm in parallelization mode
+dispatcher_SOC_pen - same as dispatcher_dsctd but with an element more in the objective function to incentivize the battery to be fully charged
+
+
+
+
+TESTS
+
 test1 - test with cst load varying between min and max production and yearly production
 
 test2.1 - test with cst load varying  between mind and max and sinusoidal res generation
@@ -40,6 +51,8 @@ test4.1 - to check if simulating for shorter time horizon (with the sinusoidal e
 
 test4.1bis - to check if simulating for shorter time horizon with real production affects the results
 
+test4.1bis2 - same as test4.1bis but with real generation
+
 test4.2 - to check how much slower is the dispatcher if I implement all the constraints of the DG
         ->
 
@@ -53,3 +66,10 @@ test5.1 - to check how the system behave if I implement an objective function wh
 
 TEST6
  testGA_DoD - first test in which te GA has three variables, capacity rating power rating and DoD of the battery
+
+ test_GA_parallel - testing multiprocessing Pool() and ThreadPool()
+                    I have some problems:
+                    Pool() is too slow
+                    ThreadPool() porta a clashes between the dispatcher function run in parallel
+
+test_GA_parallel_2 - similar to test_GA_parallel but I use runner = StarmapParallelization(pool.starmap)

@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 
 def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are variables (bin_var=True) or input parameters (bin_var=False) for the dispatcher
-        
+    
+    print("Started.")
     optim_horiz = design.optim_horiz # number of hours to optmize (optmization horizon)
     time_range_optim = range(optim_horiz)
     
@@ -384,4 +385,6 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                               'P_load': P_load
 
                      })
+    
+    print("Done.")
     return data, data_time

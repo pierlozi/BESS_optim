@@ -58,7 +58,7 @@ df.set_index('SOC weight [-]', inplace=True)
 
 
 #%% Plots
-
+data_time = dfs_time_tot.loc[0]
 day_start_display = day_of_year.MyFun("24-10")
 days_display = 7
 

@@ -15,6 +15,9 @@ import time
 from pymoo.optimize import minimize
 from pymoo.core.problem import Problem
 from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.termination import get_termination
+from pymoo.operators.sampling.rnd import IntegerRandomSampling
+
 
 import matplotlib.pyplot as plt
 from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
@@ -35,7 +38,7 @@ design = microgrid_design.MG(Pr_BES=17.7, \
                    P_ren=P_ren_read, \
                    )
 
-data, data_time = dispatcher_SOC_pen.MyFun(design, False)
+
 
 
 #%%
@@ -46,7 +49,7 @@ cyclelife = [170000, 48000, 21050, 11400, 6400, 4150, 3500, 3000, 2700, 2500]
 DoD = [10, 20, 30, 40, 50, 60, 65, 70, 75, 80]
 
 # polynomial interpolation of degree 2
-n = 10
+n = 6
 coefficients = np.polyfit(DoD, cyclelife, n)
 
 class ProblemWrapper(Problem):
@@ -65,25 +68,29 @@ class ProblemWrapper(Problem):
 
             data, _ = dispatcher_SOC_pen.MyFun(design, False)
             LCOS = data['LCOS [€/MWh]'].values[0]
-            fuel_cons = data['Fuel Cost [million euros]'].values[0]
-            res.append([LCOS, fuel_cons])
+            lifetime_cost = data['Lifetime cost [million euros]'].values[0]
+            res.append([LCOS, lifetime_cost])
         
         out['F'] = np.array(res)
 
 #the variables are in order Er_BES, Pr_BES, DoD
 
-prob = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [2000.,116.,80.])
+problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [2000.,200.,80.], vtype=int)
 
-algo = NSGA2(pop_size=10)
+algorithm = NSGA2(pop_size=2,
+                  sampling = IntegerRandomSampling(),
+                  eliminate_duplicates=True
+                  )
 
-stop_criterium = ('n_gen',10)
+termination = get_termination("n_gen", 1) # | get_termination("tolx", 1) # | get_termination("f_tol", 0.01)
 
-results = minimize(
-    problem=prob,
-    algorithm=algo,
-    termination=stop_criterium
-)
+results = minimize(problem,
+               algorithm,
+               termination)  
 
+print('Time:', results.exec_time)
+
+#%%
 
 X = results.X
 F = results.F
@@ -92,11 +99,11 @@ pareto_opt_gen = pd.DataFrame({'Capacity [MWh]': results.X[:,0],
                          'Power [MW]': results.X[:,1] ,
                          'DoD [%]': results.X[:,2],
                          'LCOS [€/MWh]': results.F[:,0],
-                         'Fuel [L]': results.F[:,1]
+                         'Lifetime cost [mil€]': results.F[:,1]
                         })
 
 
-xl, xu = prob.bounds()
+xl, xu = problem.bounds()
 plt.figure(figsize=(7, 5))
 plt.scatter(X[:, 0], X[:, 1], s=40, facecolors='none', edgecolors='r', label = "Pareto optimal solutions")
 plt.plot(X[:, 0], X[:, 0]/10, label= "10 hours storage")
@@ -118,7 +125,7 @@ plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none', edgecolors='bla
 
 plt.title("Objective Space")
 plt.xlabel("LCOS [€/MWh]")
-plt.ylabel("Fuel consumption [L]")
+plt.ylabel("Lifetime cost [mil€]")
 plt.legend(loc = "best")
 plt.show()
 
