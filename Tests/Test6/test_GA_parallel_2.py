@@ -34,6 +34,10 @@ P_load_data['Load [MW]'] = P_ren_read['Power'].mean()*np.ones(len(P_ren_read))/1
 #%%
 
 #I am parallelizing the code in a thread pool of as many threads as CPU cores there are
+# 'pool' is used to execute multiple threads of a function in parallel
+# 'starmap' maps a function to an iterable, and then applies the function to 
+#  each element in the iterable in parallel using the thread pool
+
 #n_threads = os.cpu_count()
 n_threads = 8
 pool = ThreadPool(n_threads)

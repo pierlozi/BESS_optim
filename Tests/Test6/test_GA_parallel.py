@@ -67,7 +67,7 @@ class MyProblem(Problem):
     #     # params is a 'pop-size' long list of n_var long tuples. 
     #     # Each tuple carries the trial values for the N variables of the problem.
     #     # One tuple = one member of the population of the current generation
-    #     # X is an array with 'pop-size' rows and N columns containing the same dat of params
+    #     # X is an array with 'pop-size' rows and N columns containing the same data of params
     #     params = [(X[k, 0], X[k, 1], X[k, 2]) for k in range(len(X))]
 
     #     '''calculate the function values in a parallelized manner and wait until done'''

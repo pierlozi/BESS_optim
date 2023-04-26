@@ -9,23 +9,30 @@ plt.rcParams.update({'figure.figsize' : [20, 7]})
 
 #%% Load plot
 P_load = pd.read_excel('load_data.xlsx', sheet_name='Yearly Load', header=0)
+P_ren_load = pd.read_csv('RESData_option-2.csv', header=0, nrows = 8760) #W
+P_ren_load['Power'] = P_ren_load['Power']/1e6
 
-ax_load = plt.gca()
+ax_load = plt.subplot()
+ax_ren_load = ax_load.twinx()
 
-P_load.iloc[0:25].plot(kind="line", color= 'black',y = 'Load [MW]', ax = ax_load)
+ax_load.plot(P_load.iloc[25:49]['Load [MW]'], color= 'black')
+ax_ren_load.plot(P_ren_load.iloc[25:49]['Power'], color= 'green')
 ax_load.set_xlabel("Hour")
-ax_load.set_ylabel("Power [MW]")
-# P_prod_data.plot(kind="line", y = 'Power', ax = ax_load)
+ax_load.set_ylabel("Load [MW]")
+ax_ren_load.set_ylabel("RES Generation [MW]")
 
-ax_load.get_legend().remove()
-ax_load.set_xticks(list(range(0, 24+1,6)), labels = list(range(0, 24+1,6)))
+ax_ren_load.tick_params(axis='y', colors='green')
+ax_ren_load.spines['right'].set_color('green')
+
+
+ax_load.set_xticks(list(range(25, 25+24+1,6)), labels = list(range(0, 24+1,6)))
 
 
 
 plt.title("Daily Load Curve")
-plt.ylim([25,40])
+#plt.ylim([25,40])
 plt.grid()
-plt.savefig('load_curve.png',bbox_inches='tight', dpi=150)
+#plt.savefig('load_curve.png',bbox_inches='tight', dpi=150)
 
 plt.show()
 

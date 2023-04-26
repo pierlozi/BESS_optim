@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.append(r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model")
-from Core import dispatcher
+from Core import dispatcher_dsctd
 from Core import microgrid_design
 
 RES_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model\InputData\RESData_option-2.csv"
@@ -27,7 +27,8 @@ P_ren_read['Power'] = sin_ren
 
 load_avg = np.linspace(min(P_ren_read['Power']),max(P_ren_read['Power']) + 2*(max(P_ren_read['Power']) - min(P_ren_read['Power'])) , 61)
 
-design = microgrid_design.MG(P_ren=P_ren_read, RES_fac=1, price_f=2, eff=1, DoD=100)
+design = microgrid_design.MG(P_ren=P_ren_read)
+design.optim_horiz = 24
 
 df = pd.DataFrame()
 dfs_time = []
@@ -35,7 +36,7 @@ dfs_time = []
 i = 0
 for load in load_avg:
     design.P_load['Load [MW]'] = load*np.ones(8760)/1e6 #MW
-    data, data_time = dispatcher.MyFun(design, True)
+    data, data_time = dispatcher_dsctd.MyFun(design, True)
 
     df = pd.concat([df,data], ignore_index=True)
     df.loc[i, 'Load [%]'] = (load - load_avg[0])/(max(P_ren_read['Power'])-min(P_ren_read['Power']))*100
@@ -54,12 +55,18 @@ dfs_time_tot.to_excel("test2_2_dfs_time_tot_load_0_300.xlsx")
 
 #%%GIGA plot
 
-day_start_display = 5
-days_display = 3
+day_start_display = 0
+days_display = 4
 col_num = 3
 
-fig, axes = plt.subplots(nrows=math.ceil(len(df.index.get_level_values('Load [%]'))/col_num), ncols=col_num, figsize=(20, 40))
-plt.subplots_adjust(wspace=0.4, hspace=0.3)
+fig, axes = plt.subplots(nrows=math.ceil(len(df.index.get_level_values('Load [%]'))/col_num), ncols=col_num, figsize=(20, 100))
+plt.subplots_adjust(wspace=0.4, hspace=0.4)
+
+
+#The enumerate() function returns an iterator with both the index number and value of each element
+# in the axes.flat object, which represents a flattened version of the subplots. 
+# The i variable stores the index number of the current subplot, 
+# while the ax variable stores the current subplot object itself.
 
 for i, ax in enumerate(axes.flat):
     if i < len(df.index.get_level_values('Load [%]')):
