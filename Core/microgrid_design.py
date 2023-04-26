@@ -33,15 +33,27 @@
 # price_f = 1.66 # €/L
 # C_DG = 600 #€/kW
 
-# DoD = [] # %
-# cyclelife = 2700 #cycles
+ #empirical parameters for diesel fuel consumption from 
+# "Multi objective particle swarm optimization of hybrid micro-grid system: A case study in Sweden"
+# alpha = 0.24
+# beta = 0.084
+
+# "Multi-objective design of PV– wind– diesel– hydrogen– battery systems"
+# alpha = 0.246
+# beta = 0.08145 
+
+# cyclelifes = [170000, 48000, 21050, 11400, 6400, 4150, 3500, 3000, 2700, 2500]
+# DoDs = [10, 20, 30, 40, 50, 60, 65, 70, 75, 80]
 
 #%% class
 import pandas as pd
 # class to build object with all the design parameters to pass to the optimizer 
 class MG(): #MG stands for microgrid
 
-    def __init__(self, optim_horiz = 8760, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() , P_ren=pd.DataFrame(), mine_life=13, RES_fac=1, floatlife=7, C_P=160, C_E=180, C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, eff = 0.95, price_f=1.66, C_DG=600, SOC_w = 0):
+    def __init__(self, optim_horiz = 8760, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() ,\
+                 P_ren=pd.DataFrame(), mine_life=13, RES_fac=1, floatlife=7, C_P=360, C_E=320, \
+                 C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, \
+                 eff = 0.95, price_f=1.66, C_DG=500, SOC_w = 0, alpha = 0.246, beta = 0.08145):
         
         self.optim_horiz = optim_horiz
         
@@ -67,8 +79,10 @@ class MG(): #MG stands for microgrid
 
         self.DoD = DoD # [%] Depth of Discharge at which battery works
         self.cyclelife = cyclelife # [cycles] cyclelife corresponding to set DoD
-        self.eff = eff
+        self.eff = eff # battery charge and discharge efficiency
 
         self.price_f = price_f # [€/L] price of diesel
-        self.C_DG = C_DG
+        self.C_DG = C_DG #[€/kW] DG CAPEX
+        self.alpha = alpha #factor for fuel consumption
+        self.beta = beta #factor for fuel consumption
 # %%

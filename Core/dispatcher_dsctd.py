@@ -58,9 +58,11 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     I use it so that the model compiles different objective functions and constraints for the two types.'''
 
 
+    # Here I create the pyomo model, object that will bring with him all the information needed to solve the optimization problem (Variables, parameters, input data, constraints)
+
     m = pyo.ConcreteModel()
 
-    #m.iIDX is the set which keeps the time in the simulation
+    #m.iIDX is the time index, which set the optimization horizon of the problem in an hourly fashion
     m.iIDX = pyo.Set(initialize = time_range_optim)
     m.BES_life = pyo.Set(initialize = range(design.floatlife))
 
@@ -101,8 +103,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     #empirical parameters for diesel fuel consumption from 
     # "Multi objective particle swarm optimization of hybrid micro-grid system: A case study in Sweden"
-    m.alpha = pyo.Param(initialize=0.24) #L/kW
-    m.beta = pyo.Param(initialize=0.084) #L/kW
+    m.alpha = pyo.Param(initialize = design.alpha) #L/kW
+    m.beta = pyo.Param(initialize = design.beta) #L/kW
 
     #minimum up and down time for diesel from
     # "Optimal sizing of battery energy storage systems in off-grid micro grids using convex optimization"
@@ -143,10 +145,9 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     # # these are the binary variables to be used for the min up/down times of the diesel generator
 
-    # m.v_dg = pyo.Var(m.iIDX, domain = Binary) #1 when dg turned on at timestep
-    # m.w_dg = pyo.Var(m.iIDX, domain = Binary) #1 when dg turned off at timestep
-    # m.u_dg = pyo.Var(m.iIDX, domain=Binary) # commitment of unit (1 if unit is on)
-
+    m.v_dg = pyo.Var(m.iIDX, domain = pyo.Binary) #1 when dg turned on at timestep
+    m.w_dg = pyo.Var(m.iIDX, domain = pyo.Binary) #1 when dg turned off at timestep
+    m.u_dg = pyo.Var(m.iIDX, domain = pyo.Binary) # commitment of unit (1 if unit is on)
 
 
     #  OBJ and Microgrid  
@@ -228,10 +229,10 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     m.cstr_dg_lim = pyo.Constraint(m.iIDX, rule=f_dg_lim)
 
-    def f_dg_lim_dwn(m,i):
-        return m.P_dg[i] >= 0.2*m.Pr_dg
+    # def f_dg_lim_dwn(m,i):
+    #     return m.P_dg[i] >= 0
 
-    m.cstr_dg_lim_dwn = pyo.Constraint(m.iIDX, rule=f_dg_lim_dwn)
+    # m.cstr_dg_lim_dwn = pyo.Constraint(m.iIDX, rule=f_dg_lim_dwn)
 
     # def f_dg_commit_sup(m, i):
     #     return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
@@ -278,15 +279,20 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     # Initializing results lists
 
+    #I measure the time the solver takes to run the optimization
     start = time.time()
+
     opt = pyo.SolverFactory("gurobi")
+
     opt.solve(m)
     code_time.append( time.time() - start)
 
+    #Here I start loading the solution data into the numpy arrays which I will eventually export as output of the function
 
     P_prod = np.array([pyo.value(m.P_prod[i]) for i in m.iIDX])
     P_load = np.array([pyo.value(m.P_load[i]) for i in m.iIDX])
 
+    #if the solution is with BESS capacity equal to 0 I cannot divide the m.SOC [kWh] by 0
     if pyo.value(m.Er_BES) != 0:
         SOC.append(np.array([pyo.value(m.SOC[i]) for i in m.iIDX])/pyo.value(m.Er_BES))
     else:
