@@ -42,8 +42,8 @@ data_time.set_index('Datetime', inplace=True)
 
 #%% Plots
 
-day_start_display = day_of_year.MyFun("15-01")
-days_display = 6
+day_start_display = 0 #day_of_year.MyFun("15-08")
+days_display = 30
 
 fig, ax = plt.subplots()
  
@@ -83,7 +83,7 @@ k_d2 = -5.01e-1
 k_d3 = -1.23e5
 # SoC stress
 k_s = 1.04
-s_ref = 0.5
+s_ref = 0.5 
 # temperature stress
 k_T = 6.93e-2
 T_ref = 25 #degC
@@ -100,19 +100,27 @@ funct_f_cyc_i = lambda d, s, T: funct_S_d(d)* funct_S_s(s) * funct_S_T(T)   #cyc
 funct_f_cal = lambda s, t, T: funct_S_s(s) * funct_S_t(t) * funct_S_T(T)  #calendar ageing
 
 
-rnflow_data = pd.DataFrame(columns=['Range', 'Mean', 'Count', 'Start', 'End'])
+L = np.array([])
+L_sei = np.array([])
 
-for rng, mean, count, i_start, i_end in rf.extract_cycles(data_time['SOC']): 
-    new_row = pd.DataFrame({'Range': [rng], 'Mean': [mean], 'Count': [count], 'Start': [i_start], 'End': [i_end]})
-    rnflow_data = pd.concat([rnflow_data, new_row], ignore_index=True)
+for i in range(1, 21):
 
-rf.count_cycles(data_time['SOC'])
+    rnflow_data = pd.DataFrame(columns=['Range', 'Mean', 'Count', 'Start', 'End'])
 
-DoD = 2*rnflow_data['Range']*rnflow_data['Count']
-SOC = rnflow_data['Mean']
-rnflow_data['Cyc Deg'] = funct_f_cyc_i(DoD, SOC, T_ref) #I multiply the weight of the cycle by the degradation of that cycle
-SOC_avg = data_time['SOC'].mean()
-f_d = rnflow_data['Cyc Deg'].sum() + funct_f_cal(SOC_avg, 3600*data_time['SOC'].shape[0], T_ref)
+    for rng, mean, count, i_start, i_end in rf.extract_cycles(np.tile(data_time['SOC'].values, i)): 
+        new_row = pd.DataFrame({'Range': [rng], 'Mean': [mean], 'Count': [count], 'Start': [i_start], 'End': [i_end]})
+        rnflow_data = pd.concat([rnflow_data, new_row], ignore_index=True)
+
+    rf.count_cycles(data_time['SOC'].values)
+
+    DoD = rnflow_data['Range']
+    SOC = rnflow_data['Mean']
+    f_cyc = funct_f_cyc_i(DoD, SOC, T_ref)*rnflow_data['Count'] #I multiply the weight of the cycle by the degradation of that cycle
+    SOC_avg = data_time['SOC'].mean()
+    f_cal = funct_f_cal(SOC_avg, 3600*data_time['SOC'].shape[0], T_ref)
+    f_d = f_cyc.sum() + f_cal
+    L = np.append(L, [1-np.exp(-f_d)])
+    L_sei = np.append(L_sei, [1 - a_sei * np.exp(-b_sei*f_d) - (1-a_sei)*np.exp(-f_d)])
 
 
 # %%

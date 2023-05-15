@@ -28,7 +28,7 @@ P_ren_read['Power'] = sin_ren
 load_avg = np.linspace(min(P_ren_read['Power']),max(P_ren_read['Power']) + 2*(max(P_ren_read['Power']) - min(P_ren_read['Power'])) , 61)
 
 design = microgrid_design.MG(P_ren=P_ren_read)
-design.optim_horiz = 24
+design.optim_horiz = 24*4
 
 df = pd.DataFrame()
 dfs_time = []

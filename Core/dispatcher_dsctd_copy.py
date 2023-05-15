@@ -230,52 +230,52 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.cstr_dg_lim = pyo.Constraint(m.iIDX, rule=f_dg_lim)
 
     def f_dg_lim_dwn(m,i):
-        return m.P_dg[i] >= 0
+        return m.P_dg[i] >= 0.2*m.Pr_dg
 
     m.cstr_dg_lim_dwn = pyo.Constraint(m.iIDX, rule=f_dg_lim_dwn)
 
-    def f_dg_commit_sup(m, i):
-        return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
+    # def f_dg_commit_sup(m, i):
+    #     return m.P_dg[i] <= m.u_dg[i]*m.Pr_dg_MAX
 
-    m.cstr_dg_commit_sup = pyo.Constraint(m.iIDX, rule=f_dg_commit_sup)
+    # m.cstr_dg_commit_sup = pyo.Constraint(m.iIDX, rule=f_dg_commit_sup)
 
-    def f_dg_commit_inf(m, i):
-        return m.P_dg[i] >= m.u_dg[i]*m.Pr_dg_MIN
+    # def f_dg_commit_inf(m, i):
+    #     return m.P_dg[i] >= m.u_dg[i]*m.Pr_dg_MIN
 
-    m.cstr_dg_commit_inf = pyo.Constraint(m.iIDX, rule=f_dg_commit_inf)
+    # m.cstr_dg_commit_inf = pyo.Constraint(m.iIDX, rule=f_dg_commit_inf)
 
 
-    m.cstr_dg_uptime = pyo.ConstraintList()
+    # m.cstr_dg_uptime = pyo.ConstraintList()
 
-    # def f_dg_uptime(m, i):
-    #     return sum(m.u[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i]
+    # # def f_dg_uptime(m, i):
+    # #     return sum(m.u[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i]
 
-    for i in m.iIDX:
-        if i <= len(m.iIDX) - m.UT - 1:
-            m.cstr_dg_uptime.add(sum(m.u_dg[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i])
+    # for i in m.iIDX:
+    #     if i <= len(m.iIDX) - m.UT - 1:
+    #         m.cstr_dg_uptime.add(sum(m.u_dg[j] for j in range(i, i + m.UT) ) >= m.UT*m.v_dg[i])
 
-    m.cstr_dg_dwntime = pyo.ConstraintList()
+    # m.cstr_dg_dwntime = pyo.ConstraintList()
 
-    # def f_dg_dwntime(m, i):
-    #     return sum((1 - m.u_dg[j]) for j in range(i, i + m.UT) ) >= m.DT*m.w_dg[i]
+    # # def f_dg_dwntime(m, i):
+    # #     return sum((1 - m.u_dg[j]) for j in range(i, i + m.UT) ) >= m.DT*m.w_dg[i]
 
-    for i in m.iIDX:
-        if i <= len(m.iIDX) - m.DT - 1:
-            m.cstr_dg_dwntime.add(sum((1 - m.u_dg[j]) for j in range(i, i + m.DT) ) >= m.DT*m.w_dg[i]
-    )   
-    m.cstr_up_dwn_commit = pyo.ConstraintList()
+    # for i in m.iIDX:
+    #     if i <= len(m.iIDX) - m.DT - 1:
+    #         m.cstr_dg_dwntime.add(sum((1 - m.u_dg[j]) for j in range(i, i + m.DT) ) >= m.DT*m.w_dg[i]
+    # )   
+    # m.cstr_up_dwn_commit = pyo.ConstraintList()
 
-    # def f_up_dwn_commit(m, i):
-    #     return m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1]
+    # # def f_up_dwn_commit(m, i):
+    # #     return m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1]
 
-    for i in m.iIDX:
-        if i > 0:
-            m.cstr_up_dwn_commit.add(m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1])
+    # for i in m.iIDX:
+    #     if i > 0:
+    #         m.cstr_up_dwn_commit.add(m.v_dg[i] - m.w_dg[i] == m.u_dg[i] - m.u_dg[i-1])
 
-    def f_up_dwn_excl(m, i):
-        return m.v_dg[i] + m.w_dg[i] <= 1
+    # def f_up_dwn_excl(m, i):
+    #     return m.v_dg[i] + m.w_dg[i] <= 1
 
-    m.cstr_up_dwn_excl = pyo.Constraint(m.iIDX, rule = f_up_dwn_excl)
+    # m.cstr_up_dwn_excl = pyo.Constraint(m.iIDX, rule = f_up_dwn_excl)
 
     # Initializing results lists
 
