@@ -230,8 +230,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.cstr_dg_lim = pyo.Constraint(m.iIDX, rule=f_dg_lim)
 
     def f_dg_lim_dwn(m,i):
-        return m.P_dg[i] >= 0.2*m.Pr_dg
-
+        return m.P_dg[i] >= 0
     m.cstr_dg_lim_dwn = pyo.Constraint(m.iIDX, rule=f_dg_lim_dwn)
 
     # def f_dg_commit_sup(m, i):
@@ -294,61 +293,58 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
     #if the solution is with BESS capacity equal to 0 I cannot divide the m.SOC [kWh] by 0
     if pyo.value(m.Er_BES) != 0:
-        SOC.append(np.array([pyo.value(m.SOC[i]) for i in m.iIDX])/pyo.value(m.Er_BES))
+        SOC = np.array([pyo.value(m.SOC[i]) for i in m.iIDX])/pyo.value(m.Er_BES)
     else:
-        SOC.append(np.array([pyo.value(m.SOC[i]) for i in m.iIDX]))
+        SOC = (np.array([pyo.value(m.SOC[i]) for i in m.iIDX]))
 
-    P_BES.append(np.array([(pyo.value(m.P_dch[i]) - pyo.value(m.P_ch[i]) ) for i in m.iIDX]))
-    E_dch.append(pyo.value(sum(m.P_dch[i] for i in m.iIDX)))
-    P_dch.append(np.array([pyo.value(m.P_dch[i]) for i in m.iIDX]))
-    P_ch.append(np.array([pyo.value(m.P_ch[i]) for i in m.iIDX]))
-    BES_capex.append(pyo.value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)) #€
-    BES_opex.append(pyo.value(m.Pr_BES*m.C_POM*1e3 + m.Er_BES*m.C_EOM*1e3)) #€/year
-    Er_BES.append(pyo.value(m.Er_BES))
-    Pr_BES.append(pyo.value(m.Pr_BES))
-
-    # chi = np.array([value(m.chi[b]) for b in m.bIDX])
-    # LEr = np.array([value(m.LEr[b]) for b in m.bIDX])
+    P_BES = (np.array([(pyo.value(m.P_dch[i]) - pyo.value(m.P_ch[i]) ) for i in m.iIDX]))
+    E_dch = (pyo.value(sum(m.P_dch[i] for i in m.iIDX)))
+    P_dch = (np.array([pyo.value(m.P_dch[i]) for i in m.iIDX]))
+    P_ch = (np.array([pyo.value(m.P_ch[i]) for i in m.iIDX]))
+    BES_capex = (pyo.value((m.Pr_BES*m.C_P + m.Er_BES*(m.C_E+m.C_inst))*1e3)) #€
+    BES_opex = (pyo.value(m.Pr_BES*m.C_POM*1e3 + m.Er_BES*m.C_EOM*1e3)) #€/year
+    Er_BES = (pyo.value(m.Er_BES))
+    Pr_BES = (pyo.value(m.Pr_BES))
         
-    P_curt.append(np.array([pyo.value(m.P_curt[i]) for i in m.iIDX]))
+    P_curt = (np.array([pyo.value(m.P_curt[i]) for i in m.iIDX]))
 
-    P_dg.append(np.array([pyo.value(m.P_dg[i]) for i in m.iIDX]))
-    dg_capex.append(pyo.value(m.Pr_dg*m.C_DG*1e3)) #€
-    dg_opex.append(pyo.value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/optim_horiz)) #€/year   
-    Pr_dg.append(pyo.value(m.Pr_dg))
+    P_dg = (np.array([pyo.value(m.P_dg[i]) for i in m.iIDX]))
+    dg_capex = (pyo.value(m.Pr_dg*m.C_DG*1e3)) #€
+    dg_opex = (pyo.value((m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/optim_horiz)) #€/year   
+    Pr_dg = (pyo.value(m.Pr_dg))
     # u_dg = np.array([pyo.value(m.u_dg[i]) for i in m.iIDX])
     # w_dg = np.array([pyo.value(m.w_dg[i]) for i in m.iIDX])
     # v_dg = np.array([pyo.value(m.v_dg[i]) for i in m.iIDX])
 
-    P_thr.append(abs(P_BES[-1]))
+    P_thr = abs(P_BES)
 
     if pyo.value(m.Er_BES) != 0 and pyo.value(m.Pr_BES) != 0: #to avoid division by zero
-        cycles_y.append(sum(P_thr[-1])/Er_BES[-1])
+        cycles_y = sum(P_thr)/Er_BES
 
-        BES_cyclelife.append(round(pyo.value(m.cyclelife)/cycles_y[-1]))
+        BES_cyclelife = (round(pyo.value(m.cyclelife)/cycles_y))
 
         cost_cash_flow  = []
         for i in range(0, design.mine_life):
             if design.mine_life > pyo.value(m.floatlife): #if the mine has a life longer than shelflife of battery
-                if BES_cyclelife[-1] >= pyo.value(m.floatlife): #if battery has to be changed at floatlife
+                if BES_cyclelife >= pyo.value(m.floatlife): #if battery has to be changed at floatlife
                     if i == 0:
-                        cost_cash_flow.append(BES_capex[-1] + BES_opex[-1]) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(BES_capex + BES_opex) # + dg_opex) #€
                     elif i == pyo.value(m.floatlife) - 1:    
-                        cost_cash_flow.append(BES_capex[-1] + BES_opex[-1]) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(BES_capex + BES_opex) # + dg_opex) #€
                     else:
-                        cost_cash_flow.append(BES_opex[-1]) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(BES_opex) # + dg_opex) #€
                 else: #if the battery has to be changed at cycle life
                     if i == 0:
-                        cost_cash_flow.append(BES_capex[-1] + BES_opex[-1]) # + dg_opex[-1]) #€
-                    elif i == BES_cyclelife[-1] - 1:    
-                        cost_cash_flow.append(BES_capex[-1] + BES_opex[-1]) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(BES_capex + BES_opex) # + dg_opex) #€
+                    elif i == BES_cyclelife - 1:    
+                        cost_cash_flow.append(BES_capex + BES_opex) # + dg_opex) #€
                     else:
-                        cost_cash_flow.append(BES_opex[-1]) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(BES_opex) # + dg_opex) #€
             else: #if the battery has a longer life than the mine
                 if i == 0:
-                    cost_cash_flow.append(BES_capex[-1] + BES_opex[-1]) # + dg_opex[-1]) #€
+                    cost_cash_flow.append(BES_capex + BES_opex) # + dg_opex) #€
                 else:
-                    cost_cash_flow.append(BES_opex[-1])           
+                    cost_cash_flow.append(BES_opex)           
 
 
         cost_dsctd = [] #€
@@ -359,7 +355,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
         P_dch_dsctd = [] #MWh
         for i in range(len(cost_cash_flow)):
-            P_dch_dsctd.append(E_dch[-1]/(1+pyo.value(m.IR))**i)
+            P_dch_dsctd.append(E_dch/(1+pyo.value(m.IR))**i)
 
         LCOS = sum(cost_dsctd)/sum(P_dch_dsctd) #€/MWh
     else:
@@ -369,21 +365,22 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     data = pd.DataFrame({'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
                      'Pr_diesel [MW]': Pr_dg,
-                     'BES cost [million euros]': BES_capex[-1]/1e6 + BES_opex[-1]/1e6 ,
-                     'DG cost [million euros]': dg_capex[-1]/1e6,
+                     'BES CAPEX [million euros]': BES_capex/1e6 ,
+                     'BES OPEX [million euros]': BES_opex/1e6 ,
+                     'DG cost [million euros]': dg_capex/1e6,
                      'LCOS [€/MWh]': LCOS,
-                     'Fuel Cost [million euros]': dg_opex[-1]/1e6,
-                     'Total Cost [million euros]': BES_capex[-1]/1e6 + BES_opex[-1]/1e6 + dg_capex[-1]/1e6 + dg_opex[-1]/1e6,
+                     'Fuel Cost [million euros]': dg_opex/1e6,
+                     'Total Cost [million euros]': BES_capex/1e6 + BES_opex/1e6 + dg_capex/1e6 + dg_opex/1e6,
                      'Lifetime cost [million euros]': pyo.value(m.obj)/1e6
-                     })
+                     }, index = [0])
     
     data_time = pd.DataFrame({'Datetime': design.P_ren['Datetime'][0:optim_horiz],
-                              'SOC': SOC[-1],
-                              'P_ch': P_ch[-1],
-                              'P_dch': P_dch[-1],
-                              'P_BES': P_BES[-1],
-                              'P_curt': P_curt[-1],
-                              'P_dg': P_dg[-1],
+                              'SOC': SOC,
+                              'P_ch': P_ch,
+                              'P_dch': P_dch,
+                              'P_BES': P_BES,
+                              'P_curt': P_curt,
+                              'P_dg': P_dg,
                               'P_prod':P_prod,
                               'P_load': P_load
 
