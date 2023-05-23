@@ -59,7 +59,7 @@ import pandas as pd
 class MG(): #MG stands for microgrid
 
     def __init__(self, optim_horiz = 8760, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() ,\
-                 P_ren=pd.DataFrame(), mine_life=13, RES_fac=1, floatlife=10, C_P=360, C_E=320, \
+                 P_ren=pd.DataFrame(), mine_life=13, RES_fac=7, floatlife=10, C_P=360, C_E=320, \
                  C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, \
                  eff = 0.95, price_f=1.66, C_DG=500, SOC_w = 0, alpha = 0.246, beta = 0.08145, \
                  p_NOx = 10.0714, p_SO2 = 2.3747, p_CO2 = 0.0336,\

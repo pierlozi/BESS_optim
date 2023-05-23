@@ -366,7 +366,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     else:
         LCOS = float('NaN')
 
-    em_cost = (design.p_NOx * design.ef_NOx + design.p_SO2 * design.ef_SO2 + design.p_CO2 * design.ef_NCO2) * sum(P_dg)*1e3 * 8760/len(P_dg)
+    em_cost = (design.p_NOx * design.ef_NOx + design.p_SO2 * design.ef_SO2 + design.p_CO2 * design.ef_CO2) * sum(P_dg)*1e3 * 8760/len(P_dg)
     
     data = pd.DataFrame({'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
@@ -375,7 +375,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                      'BES OPEX [million euros]': BES_opex/1e6 ,
                      'DG cost [million euros]': dg_capex/1e6,
                      'LCOS [€/MWh]': LCOS,
-                     'Emissions Cost [euros]': em_cost,
+                     'Emissions Cost [million euros]': em_cost/1e6,
                      'Fuel Cost [million euros]': dg_opex/1e6,
                      'Total Cost [million euros]': BES_capex/1e6 + BES_opex/1e6 + dg_capex/1e6 + dg_opex/1e6,
                      'Lifetime cost [million euros]': pyo.value(m.obj)/1e6
