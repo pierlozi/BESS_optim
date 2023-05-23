@@ -1,20 +1,23 @@
 import math
 
-def MyFun(Er: float , Pr: float , cyclelife, minelife, floatlife, DR, capex, opex, E_dch): #cyclelife from raifnlow, the others are given
+def MyFun(Er: float , Pr: float , cyclelife, minelife, floatlife, DR, capex, opex, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the others are given
 
     #here I compute how many years of life the battery still has when the project is over (minelife), to compute residual value. I take into
     # account also that the battery will have been changed
 
-    if minelife>=floatlife:
+    if res_val_bin:
+        if minelife>=floatlife:
 
-        if floatlife >= cyclelife:
-            BES_usage, _ = math.modf(minelife, minelife/cyclelife)
+            if floatlife >= cyclelife:
+                BES_usage, _ = math.modf(minelife/cyclelife)
+            else:
+                BES_usage = (minelife%floatlife)/cyclelife
         else:
-            BES_usage = (minelife%floatlife)/cyclelife
-    else:
-        BES_usage, _ = math.modf(minelife, minelife/cyclelife)
+            BES_usage, _ = math.modf(minelife/cyclelife)
 
-    res_val = capex * (1 - BES_usage)
+        res_val = capex * (1 - BES_usage)
+    else:
+        res_val = 0
 
     if Er != 0 and Pr != 0: #to avoid division by zero
         
@@ -26,16 +29,16 @@ def MyFun(Er: float , Pr: float , cyclelife, minelife, floatlife, DR, capex, ope
                 if cyclelife >= floatlife: #battery has to be changed at floatlife
 
                     if i == 0:
-                        cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(capex + opex)  #€
                     elif i == floatlife - 1:    
-                        cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(capex + opex)  #€
                     else:
-                        cost_cash_flow.append(opex) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(opex)  #€
 
                 else: #the battery has to be changed at cyclelife
 
                     if i == 0:
-                        cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
+                        cost_cash_flow.append(capex + opex)  #€
                     elif i == cyclelife - 1:    
                         cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
                     else:

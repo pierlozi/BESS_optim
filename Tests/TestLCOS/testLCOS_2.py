@@ -1,8 +1,6 @@
-#%% 
-import rainflow as rf
+#%%
 import numpy as np
 import pandas as pd
-import math
 import matplotlib.pyplot as plt
 from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
 plt.rcParams.update({'font.size': 12})
@@ -22,16 +20,20 @@ importlib.reload(LCOS_funct)
 importlib.reload(rain_deg_funct)
 
 
+tt = np.linspace(0,8759, 8760)
+A = 3
+B = 1
+sin_ren = A*1e6 + B*1e6*np.sin(2*np.pi*tt/24)
+
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_ren_read['Datetime'] =  pd.to_datetime(P_ren_read['Datetime'], format = '%Y-%m-%d %H:%M:%S')
+P_ren_read['Power'] = sin_ren
 
+design = microgrid_design.MG(P_ren=P_ren_read, RES_fac=1, DoD=80, optim_horiz=24)
 
-P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
+design.P_load['Load [MW]'] = [P_ren_read['Power'].min()+0.5*(P_ren_read['Power'].max()-P_ren_read['Power'].min())]*np.ones(8760)/1e6 #MW
 
-
-design = microgrid_design.MG(P_ren=P_ren_read, P_load=P_load, RES_fac = 7 , Er_BES = 72, Pr_BES = 14)
-
-data, data_time = dispatcher_dsctd.MyFun(design, False)
+data, data_time = dispatcher_dsctd.MyFun(design, True)
 
 data_time['Datetime'] = pd.to_datetime(data_time['Datetime'], format = '%Y-%m-%d %H:%M:%S')
 data_time.set_index('Datetime', inplace=True)
