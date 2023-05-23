@@ -8,6 +8,7 @@
 # C_EOM = 0 #$/kWh operation cost related to energy
 # sigma = 0,2/100 #original daily self discharge is 0,2% -> we need an hourly self discharge
 # m.IR = 5/100
+# floatlife = 10
 
 #data from 'Projecting the Future Levelized Cost of Electricity Storage Technologies'
 # C_P = 678 #$/kW
@@ -27,8 +28,7 @@
 # sigma = 0 #original daily self discharge is 0,2% -> we need an hourly self discharge
 # IR = 5/100
 
-# floatlife = 9 #years
-# mine_life = 13 #years
+# mine_life = 13 #years # randomly chosen 
 
 # price_f = 1.66 # €/L
 # C_DG = 600 #€/kW
@@ -45,6 +45,14 @@
 # cyclelifes = [170000, 48000, 21050, 11400, 6400, 4150, 3500, 3000, 2700, 2500]
 # DoDs = [10, 20, 30, 40, 50, 60, 65, 70, 75, 80]
 
+# data from 'Optimal sizing of battery energy storage systems in off-grid micro grids using convex optimization'
+# p_NOx = 10.0714
+# p_SO2 = 2.3747
+# p_CO2 = 0.0336
+# ef_NOx = 0.0218
+# ef_SO2 = 0.000454
+# ef_CO2 = 0.001432
+
 #%% class
 import pandas as pd
 # class to build object with all the design parameters to pass to the optimizer 
@@ -53,7 +61,9 @@ class MG(): #MG stands for microgrid
     def __init__(self, optim_horiz = 8760, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() ,\
                  P_ren=pd.DataFrame(), mine_life=13, RES_fac=1, floatlife=10, C_P=360, C_E=320, \
                  C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, IR=5/100, DoD=75, cyclelife=2700, \
-                 eff = 0.95, price_f=1.66, C_DG=500, SOC_w = 0, alpha = 0.246, beta = 0.08145):
+                 eff = 0.95, price_f=1.66, C_DG=500, SOC_w = 0, alpha = 0.246, beta = 0.08145, \
+                 p_NOx = 10.0714, p_SO2 = 2.3747, p_CO2 = 0.0336,\
+                 ef_NOx = 0.0218, ef_SO2 = 0.000454, ef_CO2 = 0.001432 ):
         
         self.optim_horiz = optim_horiz
         
@@ -85,4 +95,12 @@ class MG(): #MG stands for microgrid
         self.C_DG = C_DG #[€/kW] DG CAPEX
         self.alpha = alpha #factor for fuel consumption
         self.beta = beta #factor for fuel consumption
+
+        self.p_NOx = p_NOx #€/kg
+        self.p_SO2 = p_SO2 #€/kg
+        self.p_CO2 = p_CO2 #€/kg
+        self.ef_NOx = ef_NOx #kg/kWh
+        self.ef_SO2 = ef_SO2 #kg/kWh
+        self.ef_CO2 = ef_CO2 #kg/kWh
+
 # %%

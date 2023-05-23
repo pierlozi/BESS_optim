@@ -67,6 +67,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.iIDX = pyo.Set(initialize = time_range_optim)
     m.BES_life = pyo.Set(initialize = range(design.floatlife))
 
+    m.mine_life = pyo.Set(initialize = range(design.mine_life))
+
     '''importing data in the pyomo framewrok''' 
     m.P_load = pyo.Param(m.iIDX,initialize=P_load_dict)
     m.P_prod = pyo.Param(m.iIDX, initialize=P_prod_dict)
@@ -157,11 +159,11 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
             return (m.Pr_BES*(m.C_P + m.C_POM*sum((1/(1+m.IR)**y) for y in m.BES_life)) +\
                     m.Er_BES*(m.C_E + m.C_inst + m.C_EOM*sum((1/(1+m.IR)**y) for y in m.BES_life)))*1e3 +\
                     m.Pr_dg*m.C_DG*1e3 +\
-                   (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.BES_life)
+                   (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.mine_life)
     else:
         def obj_funct(m):
             return m.Pr_dg*m.C_DG*1e3 +\
-                  (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.BES_life)
+                  (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.mine_life)
     m.obj = pyo.Objective(rule = obj_funct, sense = pyo.minimize)
 
     def f_equi_RES(m,i):
@@ -364,6 +366,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     else:
         LCOS = float('NaN')
 
+    em_cost = (design.p_NOx * design.ef_NOx + design.p_SO2 * design.ef_SO2 + design.p_CO2 * design.ef_NCO2) * sum(P_dg)*1e3 * 8760/len(P_dg)
     
     data = pd.DataFrame({'Er_BES [MWh]': Er_BES,
                      'Pr_BES [MW]': Pr_BES,
@@ -372,6 +375,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                      'BES OPEX [million euros]': BES_opex/1e6 ,
                      'DG cost [million euros]': dg_capex/1e6,
                      'LCOS [€/MWh]': LCOS,
+                     'Emissions Cost [euros]': em_cost,
                      'Fuel Cost [million euros]': dg_opex/1e6,
                      'Total Cost [million euros]': BES_capex/1e6 + BES_opex/1e6 + dg_capex/1e6 + dg_opex/1e6,
                      'Lifetime cost [million euros]': pyo.value(m.obj)/1e6
