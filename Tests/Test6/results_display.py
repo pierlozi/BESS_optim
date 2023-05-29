@@ -18,10 +18,7 @@ from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
 
 plt.rcParams.update({'font.size': 12})
 
-
-
-
-df = pd.read_excel('res_NSGAII_LCOS_EMCost_30pop_05ftol.xlsx', index_col = 0, usecols="A:F")
+df = pd.read_excel('res_NSGAII_LCOS_EMCost_30pop_05ftol.xlsx', index_col = 0, usecols="A:F", header= 0)
 df.columns = ['Er', 'Pr', 'DoD', 'LCOS','EmCost']
 
 X = np.array([list(elements) for elements in zip(df.Er.values,df.Pr.values,df.DoD.values)])

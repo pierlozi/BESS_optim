@@ -33,7 +33,7 @@ data, data_time = dispatcher_dsctd.MyFun(design, False)
 
 data_time['Datetime'] = pd.to_datetime(data_time['Datetime'], format = '%Y-%m-%d %H:%M:%S')
 data_time.set_index('Datetime', inplace=True)
-
+data_time['SOC'].to_csv('SOC.csv') # to then be analyzed in MATLAB
 
 #%% Plots
 

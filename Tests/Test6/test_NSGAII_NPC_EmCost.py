@@ -5,6 +5,7 @@ sys.path.append(r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model")
 from Core import dispatcher_dsctd
 from Core import microgrid_design
 from Core import rain_deg_funct, LCOS_funct
+from Core import best_polyfit_degree
 
 RES_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model\InputData\RESData_option-2.csv"
 load_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model\InputData\load_data.xlsx"
@@ -17,6 +18,8 @@ from pymoo.optimize import minimize
 from pymoo.core.problem import Problem
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.termination import get_termination
+from pymoo.termination.ftol import MultiObjectiveSpaceTermination
+from pymoo.termination.robust import RobustTermination
 from pymoo.operators.sampling.rnd import IntegerRandomSampling
 
 
@@ -53,7 +56,7 @@ class ProblemWrapper(Problem):
         design = microgrid_design.MG(Pr_BES=17.7, \
                         Er_BES=173, \
                         P_load=P_load, \
-                        P_ren=P_ren_read, \
+                        P_ren=P_ren_read
                         )
 
         for x in designs:
@@ -64,20 +67,18 @@ class ProblemWrapper(Problem):
 
             data, data_time = dispatcher_dsctd.MyFun(design, False)
 
-            cyclelife, _ = rain_deg_funct.MyFun(SOC_profile = data_time['SOC'].values)
+            design.DG_CAPEX = data['DG cost [million euros]']
+            design.DG_OPEX = data['Fuel Cost [million euros]']
 
-            LCOS, _ = LCOS_funct.MyFun(Er = data['Er_BES [MWh]'].values[0],\
-                                    Pr = data['Pr_BES [MW]'].values[0], \
-                                    cyclelife = cyclelife, minelife = design.mine_life, floatlife = design.floatlife,\
-                                    DR = design.IR, \
-                                    capex = data['BES CAPEX [million euros]'].values[0]*1e6, \
-                                    opex = data['BES OPEX [million euros]'].values[0]*1e6,\
+            design.cyclelife, _ = rain_deg_funct.MyFun(SOC_profile = data_time['SOC'].values)
+
+            _ , _ , NPC = LCOS_funct.MyFun(design, \
                                     E_dch = sum(data_time['P_dch']),\
                                     res_val_bin = True
                                     )
 
             emissions_cost = data['Emissions Cost [million euros]'].values[0]
-            res.append([LCOS, emissions_cost])
+            res.append([NPC[0], emissions_cost]) #NPC is also in million euros
         
         out['F'] = np.array(res)
 
@@ -85,12 +86,15 @@ class ProblemWrapper(Problem):
 
 problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [2000.,200.,80.], vtype=int)
 
-algorithm = NSGA2(pop_size=10,
+algorithm = NSGA2(pop_size=30,
                   sampling = IntegerRandomSampling(),
                   eliminate_duplicates=True
                   )
 
-termination = get_termination("n_gen", 10) # | get_termination("tolx", 1) # | get_termination("f_tol", 0.01)
+# termination = get_termination("n_gen", 1) # | get_termination("tolx", 1) # | get_termination("f_tol", 0.01)
+
+termination = RobustTermination(MultiObjectiveSpaceTermination(tol = 0.5), period=5) #period is the number of generations to consider for the termination
+
 
 results = minimize(problem,
                algorithm,
@@ -103,8 +107,11 @@ print('Time:', results.exec_time)
 X = results.X
 F = results.F
 
-# df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er [MWh]', 'Pr [MW]', 'DoD [%]', 'LCOS [€/MWh]','Emissions Cost [million€]' ])
-# df.to_excel('res_GA_LCOS_rnflw_10pop_10gen.xlsx')
+df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'NPC','EmCost'])
+df.to_excel('test_NSGAII_NPC_EmCost.xlsx')
+
+coefficients = np.polyfit(df.LCOS.values, df.EmCost.values, best_polyfit_degree.MyFun(df.LCOS.values, df.EmCost.values ))
+
 
 pareto_opt_gen = pd.DataFrame({'Capacity [MWh]': results.X[:,0],
                          'Power [MW]': results.X[:,1] ,
@@ -133,6 +140,7 @@ plt.figure(figsize=(7, 5))
 plt.scatter(F[:, 0], F[:, 1], s=30, facecolors='none', edgecolors='blue')
 plt.scatter(approx_ideal[0], approx_ideal[1], facecolors='none', edgecolors='red', marker="*", s=100, label="Ideal Point (Approx)")
 plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none', edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
+plt.plot(np.linspace(df.LCOS.min(), df.LCOS.max(),100),np.polyval(coefficients, np.linspace(df.LCOS.min()-15, df.LCOS.max()+15,100)), color = 'green',label="PolyFit")
 
 plt.title("Objective Space")
 plt.xlabel("LCOS [€/MWh]")
@@ -140,10 +148,5 @@ plt.ylabel("Emissions cost [mil€]")
 plt.legend(loc = "best")
 plt.show()
 
-# nF = (F - approx_ideal) / (approx_nadir - approx_ideal)
 
-# plt.figure(figsize=(7, 5))
-# plt.scatter(nF[:, 0], nF[:, 1], s=30, facecolors='none', edgecolors='blue')
-# plt.title("Normalized Objective Space")
-# plt.show()
 # %%

@@ -43,7 +43,7 @@ def MyFun(SOC_profile : np.array):
         new_row = pd.DataFrame({'Range': [rng], 'Mean': [mean], 'Count': [count], 'Start': [i_start], 'End': [i_end]})
         rainflow = pd.concat([rainflow, new_row], ignore_index=True)
 
-    for i in range(1, 51):
+    for i in range(1, 101):
 
         rnflow_data = rainflow.loc[rainflow.index.repeat((i-1)*8760/len(SOC_profile))]
 
@@ -53,7 +53,7 @@ def MyFun(SOC_profile : np.array):
         SOC = rnflow_data['Mean']
         f_cyc = funct_f_cyc_i(DoD, SOC, T_ref)*rnflow_data['Count'] #I multiply the weight of the cycle by the degradation of that cycle
         SOC_avg = SOC_profile.mean()
-        f_cal = funct_f_cal(SOC_avg, 3600*SOC_profile.shape[0], T_ref)
+        f_cal = funct_f_cal(SOC_avg, 3600*8760*i, T_ref)
         f_d = f_cyc.sum() + f_cal
         L = np.append(L, [1-np.exp(-f_d)])
         L_sei = np.append(L_sei, [1 - a_sei * np.exp(-b_sei*f_d) - (1-a_sei)*np.exp(-f_d)])

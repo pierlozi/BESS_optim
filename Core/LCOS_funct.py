@@ -1,11 +1,25 @@
 import math
 
-def MyFun(Er: float , Pr: float , cyclelife, minelife, floatlife, DR, capex, opex, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the others are given
+def MyFun(design, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the others are given
+
+    Er_BES = design.Er_BES
+    Pr_BES = design.Pr_BES
+    cyclelife = design.cyclelife
+    minelife = design.minelife
+    floatlife = design.floatlife
+    DR = design.DR
+
+    BES_CAPEX = design.Pr_BES*design.C_P + design.Er_BES*(design.C_E+design.C_inst)*1e3 #€
+    BES_OPEX = design.Pr_BES*design.C_POM*1e3 + design.Er_BES*design.C_EOM*1e3 #€/year
+
+    DG_CAPEX = design.DG_CAPEX
+    DG_OPEX = design.DG_OPEX
 
     #here I compute how many years of life the battery still has when the project is over (minelife), to compute residual value. I take into
     # account also that the battery will have been changed
 
     if res_val_bin:
+
         if minelife>=floatlife:
 
             if floatlife >= cyclelife:
@@ -15,65 +29,93 @@ def MyFun(Er: float , Pr: float , cyclelife, minelife, floatlife, DR, capex, ope
         else:
             BES_usage, _ = math.modf(minelife/cyclelife)
 
-        res_val = capex * (1 - BES_usage)
+        res_val = BES_CAPEX * (1 - BES_usage)
     else:
         res_val = 0
 
-    if Er != 0 and Pr != 0: #to avoid division by zero
+    if Er_BES != 0 and Pr_BES != 0: #to avoid division by zero
         
         
-        cost_cash_flow  = []
+        LCOS_cost_cash_flow  = []
+        tot_cost_cash_flow = []
         for i in range(0, minelife):
 
-            if minelife > floatlife: #if the mine has a life longer than floatlife of battery, it either has to be replaced at floatlife or cyclelife
-                if cyclelife >= floatlife: #battery has to be changed at floatlife
+            if i == 0:
 
-                    if i == 0:
-                        cost_cash_flow.append(capex + opex)  #€
-                    elif i == floatlife - 1:    
-                        cost_cash_flow.append(capex + opex)  #€
-                    else:
-                        cost_cash_flow.append(opex)  #€
+                LCOS_cost_cash_flow.append(BES_CAPEX + BES_OPEX)  #€
+                tot_cost_cash_flow.append(BES_CAPEX + BES_OPEX + DG_CAPEX + DG_OPEX)
+            
+            else:
+                
+                if minelife > floatlife: #if the mine has a life longer than floatlife of battery, it either has to be replaced at floatlife or cyclelife
+                    
+                    if cyclelife >= floatlife: #battery has to be changed at floatlife
+                        
+                        if i == floatlife - 1:    
+                            LCOS_cost_cash_flow.append(BES_CAPEX + BES_OPEX)  #€
+                        else:
+                            LCOS_cost_cash_flow.append(BES_OPEX)  #€
 
-                else: #the battery has to be changed at cyclelife
+                    else: #the battery has to be changed at cyclelife
 
-                    if i == 0:
-                        cost_cash_flow.append(capex + opex)  #€
-                    elif i == cyclelife - 1:    
-                        cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
-                    else:
-                        cost_cash_flow.append(opex) # + dg_opex[-1]) #€
+                        if i == cyclelife - 1:    
+                            LCOS_cost_cash_flow.append(BES_CAPEX + BES_OPEX)  #€
+                        else:
+                            LCOS_cost_cash_flow.append(BES_OPEX)  #€
 
-            else: #if the battery has a longer floatlife life than the minelife, it either has nto to be changed or to be changed at cyclelife
-                if cyclelife > minelife: # the battery does not need to be replaced
+                else: #if the battery has a longer floatlife life than the minelife, it either has not to be changed or to be changed at cyclelife
+                    
+                    if cyclelife > minelife: # the battery does not need to be replaced
 
-                    if i == 0:
-                        cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
-                    else:
-                        cost_cash_flow.append(opex)
+                        LCOS_cost_cash_flow.append(BES_OPEX)
 
-                else: #the battery needs to be changed at cyclelife
+                    else: #the battery needs to be changed at cyclelife
 
-                    if i == 0:
-                        cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
-                    elif i == cyclelife - 1:    
-                        cost_cash_flow.append(capex + opex) # + dg_opex[-1]) #€
-                    else:
-                        cost_cash_flow.append(opex) # + dg_opex[-1]) #€   
+                        if i == cyclelife - 1:    
+                            LCOS_cost_cash_flow.append(BES_CAPEX + BES_OPEX)  #€
+                        else:
+                            LCOS_cost_cash_flow.append(BES_OPEX)  #€   
 
-        cost_cash_flow[-1] = cost_cash_flow[-1] - res_val
+                tot_cost_cash_flow.append(LCOS_cost_cash_flow[-1] + DG_OPEX) 
 
-        cost_dsctd = [] #€
-        for i in range(len(cost_cash_flow)):
-            cost_dsctd.append(cost_cash_flow[i]/(1 + DR)**i)
+        LCOS_cost_cash_flow[-1] = LCOS_cost_cash_flow[-1] - res_val
+        tot_cost_cash_flow[-1] = tot_cost_cash_flow[-1] - res_val
 
+
+        LCOS_cost_dsctd = [] #€
+        tot_cost_dsctd = []
+        for i in range(len(LCOS_cost_cash_flow)):
+            LCOS_cost_dsctd.append(LCOS_cost_cash_flow[i]/(1 + DR)**i)
+            tot_cost_dsctd.append(tot_cost_cash_flow[i]/(1 + DR)**i)
 
         P_dch_dsctd = [] #MWh
-        for i in range(len(cost_cash_flow)):
+        for i in range(len(LCOS_cost_cash_flow)):
             P_dch_dsctd.append(E_dch/(1 + DR)**i)
 
-        LCOS = sum(cost_dsctd)/sum(P_dch_dsctd) #€/MWh
+        LCOS = sum(LCOS_cost_dsctd)/sum(P_dch_dsctd) #€/MWh
+
+        NPC = sum(tot_cost_dsctd)/1e6 #million €
     else:
+
         LCOS = float('NaN')
+
+        tot_cost_cash_flow = []
+        for i in range(0, minelife):
+
+            if i == 0:
+
+                tot_cost_cash_flow.append(DG_CAPEX + DG_OPEX)
+            
+            else:
+
+                tot_cost_cash_flow.append(DG_OPEX) 
+
+
+        tot_cost_dsctd = []
+
+        for i in range(len(LCOS_cost_cash_flow)):
+            tot_cost_dsctd.append(tot_cost_cash_flow[i]/(1 + DR)**i)
+
+        NPC = sum(tot_cost_dsctd)/1e6 #million €
     
-    return LCOS, res_val
+    return LCOS, res_val, NPC

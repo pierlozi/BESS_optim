@@ -67,7 +67,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.iIDX = pyo.Set(initialize = time_range_optim)
     m.BES_life = pyo.Set(initialize = range(design.floatlife))
 
-    m.mine_life = pyo.Set(initialize = range(design.mine_life))
+    m.minelife = pyo.Set(initialize = range(design.minelife))
 
     '''importing data in the pyomo framewrok''' 
     m.P_load = pyo.Param(m.iIDX,initialize=P_load_dict)
@@ -89,7 +89,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     m.C_POM = pyo.Param(initialize= design.C_POM) #$/kW operation cost related to power
     m.C_EOM = pyo.Param(initialize= design.C_EOM) #$/kWh operation cost related to energy
     m.sigma = pyo.Param(initialize= design.sigma/24) #original daily self discharge is 0,2% -> we need an hourly self discharge
-    m.IR = pyo.Param(initialize = design.IR)
+    m.DR = pyo.Param(initialize = design.DR)
 
     # '''Adding the table of DoD - cycle life to implement battery degradation'''
     
@@ -156,14 +156,14 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
     #  OBJ and Microgrid  
     if bin_var:
         def obj_funct(m): 
-            return (m.Pr_BES*(m.C_P + m.C_POM*sum((1/(1+m.IR)**y) for y in m.BES_life)) +\
-                    m.Er_BES*(m.C_E + m.C_inst + m.C_EOM*sum((1/(1+m.IR)**y) for y in m.BES_life)))*1e3 +\
+            return (m.Pr_BES*(m.C_P + m.C_POM*sum((1/(1+m.DR)**y) for y in m.BES_life)) +\
+                    m.Er_BES*(m.C_E + m.C_inst + m.C_EOM*sum((1/(1+m.DR)**y) for y in m.BES_life)))*1e3 +\
                     m.Pr_dg*m.C_DG*1e3 +\
-                   (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.mine_life)
+                   (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.DR)**y) for y in m.minelife)
     else:
         def obj_funct(m):
             return m.Pr_dg*m.C_DG*1e3 +\
-                  (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.IR)**y) for y in m.mine_life)
+                  (m.price_f*sum((m.alpha*m.Pr_dg + m.beta*m.P_dg[i])*1e3 for i in m.iIDX))*8760/len(m.iIDX)*sum((1/(1+m.DR)**y) for y in m.minelife)
     m.obj = pyo.Objective(rule = obj_funct, sense = pyo.minimize)
 
     def f_equi_RES(m,i):
@@ -329,8 +329,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
         BES_cyclelife = (round(pyo.value(m.cyclelife)/cycles_y))
 
         cost_cash_flow  = []
-        for i in range(0, design.mine_life):
-            if design.mine_life > pyo.value(m.floatlife): #if the mine has a life longer than shelflife of battery
+        for i in range(0, design.minelife):
+            if design.minelife > pyo.value(m.floatlife): #if the mine has a life longer than shelflife of battery
                 if BES_cyclelife >= pyo.value(m.floatlife): #if battery has to be changed at floatlife
                     if i == 0:
                         cost_cash_flow.append(BES_capex + BES_opex) # + dg_opex) #€
@@ -354,13 +354,13 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
 
         cost_dsctd = [] #€
         for i in range(len(cost_cash_flow)):
-            cost_dsctd.append(cost_cash_flow[i]/(1+pyo.value(m.IR))**i)
+            cost_dsctd.append(cost_cash_flow[i]/(1+pyo.value(m.DR))**i)
 
         dsctd_cash_flows.append(cost_dsctd)
 
         P_dch_dsctd = [] #MWh
         for i in range(len(cost_cash_flow)):
-            P_dch_dsctd.append(E_dch/(1+pyo.value(m.IR))**i)
+            P_dch_dsctd.append(E_dch/(1+pyo.value(m.DR))**i)
 
         LCOS = sum(cost_dsctd)/sum(P_dch_dsctd) #€/MWh
     else:
@@ -378,7 +378,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                      'Emissions Cost [million euros]': em_cost/1e6,
                      'Fuel Cost [million euros]': dg_opex/1e6,
                      'Total Cost [million euros]': BES_capex/1e6 + BES_opex/1e6 + dg_capex/1e6 + dg_opex/1e6,
-                     'Lifetime cost [million euros]': pyo.value(m.obj)/1e6
+                     'Lifetime cost [million euros]': pyo.value(m.obj)/1e6 #does not make sense when only evaluating diesel dispatch (binv_var=False)
                      }, index = [0])
     
     data_time = pd.DataFrame({'Datetime': design.P_ren['Datetime'][0:optim_horiz],
