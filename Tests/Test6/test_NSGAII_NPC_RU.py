@@ -57,7 +57,8 @@ class ProblemWrapper(Problem):
         design = microgrid_design.MG(Pr_BES=17.7, \
                         Er_BES=173, \
                         P_load=P_load, \
-                        P_ren=P_ren_read
+                        P_ren=P_ren_read, \
+                        optim_horiz = 24
                         )
         infeasibles = 0
         for x in designs:
@@ -66,10 +67,13 @@ class ProblemWrapper(Problem):
             design.Pr_BES = x[1]
             design.DoD = x[2]
 
-
-            data, data_time = dispatcher_dsctd.MyFun(design, False)
-
-            
+            try:
+                data, data_time = dispatcher_dsctd.MyFun(design, False)
+            except ValueError as e: 
+                infeasibles+=1
+                print(f"Infeasible solutions encountered: {infeasibles}.\n")
+                continue 
+ 
             design.DG_CAPEX = data['DG cost [million euros]']
             design.DG_OPEX = data['Fuel Cost [million euros]']
 
@@ -80,8 +84,9 @@ class ProblemWrapper(Problem):
                                     res_val_bin = True
                                     )
 
-            emissions_cost = data['Emissions Cost [million euros]'].values[0]
-            res.append([NPC[0], emissions_cost]) #NPC is also in million euros
+            RU = (sum(data_time['P_RES'] + data_time['P_dch']))/sum(data_time['P_load'])
+
+            res.append([NPC[0], RU]) #NPC is also in million euros
         
         out['F'] = np.array(res)
         #out['G'] = designs[0]/designs[1] - 10
@@ -112,19 +117,11 @@ print('Time:', results.exec_time)
 X = results.X
 F = results.F
 
-df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'NPC','EmCost'])
-df.to_excel('test_NSGAII_NPC_EmCost.xlsx')
+df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'NPC','RU'])
+df.to_excel('test_NSGAII_NPC_RU.xlsx')
 
 #%% Display
-coefficients = np.polyfit(df.NPC.values, df.EmCost.values, best_polyfit_degree.MyFun(df.NPC.values, df.EmCost.values ))
-
-
-pareto_opt_gen = pd.DataFrame({'Capacity [MWh]': results.X[:,0],
-                         'Power [MW]': results.X[:,1] ,
-                         'DoD [%]': results.X[:,2],
-                         'NPC [million €]': results.F[:,0],
-                         'Emissions Costs [million €]': results.F[:,1]
-                        })
+coefficients = np.polyfit(df.NPC.values, df.RU.values, best_polyfit_degree.MyFun(df.NPC.values, df.RU.values ))
 
 
 xl, xu = problem.bounds()
@@ -150,7 +147,7 @@ plt.plot(np.linspace(df.NPC.min(), df.NPC.max(),100),np.polyval(coefficients, np
 
 plt.title("Objective Space")
 plt.xlabel("NPC [million €]")
-plt.ylabel("Emissions cost [million €]")
+plt.ylabel("1-RU [-]")
 plt.legend(loc = "best")
 plt.show()
 
@@ -161,18 +158,17 @@ df['gamma'] = df.Er/df.Pr
 
 alt.Chart(df, title = "Objective Space").mark_circle().encode(
         alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
+        alt.Y('RU').scale(zero=False),
         size = 'gamma',
         color = 'DoD'
         )
 
-#%%
 
-alt.Chart(df[df.gamma<=10], title = "Less than 10hrs storage").mark_circle().encode(
-        alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
-        color = 'DoD'
-        )
+# alt.Chart(df[df.gamma<=10], title = "Less than 10hrs storage").mark_circle().encode(
+#         alt.X('NPC').scale(zero=False),
+#         alt.Y('RU').scale(zero=False),
+#         color = 'DoD'
+#         )
 
 
 # %%

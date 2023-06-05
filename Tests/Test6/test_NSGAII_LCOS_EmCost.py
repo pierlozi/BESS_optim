@@ -73,7 +73,7 @@ class ProblemWrapper(Problem):
 
             design.cyclelife, _ = rain_deg_funct.MyFun(SOC_profile = data_time['SOC'].values)
 
-            LCOS, _ , _ = LCOS_funct.MyFun(design, \
+            LCOS, _ , _ , _ = LCOS_funct.MyFun(design, \
                                     E_dch = sum(data_time['P_dch']),\
                                     res_val_bin = True
                                     )
@@ -87,14 +87,14 @@ class ProblemWrapper(Problem):
 
 problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [2000.,200.,80.], vtype=int)
 
-algorithm = NSGA2(pop_size=30,
+algorithm = NSGA2(pop_size=50,
                   sampling = IntegerRandomSampling(),
                   eliminate_duplicates=True
                   )
 
 #termination = get_termination("n_gen", 1) # | get_termination("tolx", 1) # | get_termination("f_tol", 0.01)
 
-termination = RobustTermination(MultiObjectiveSpaceTermination(tol = 0.5), period=5) #period is the number of generations to consider for the termination
+termination = RobustTermination(MultiObjectiveSpaceTermination(tol = 0.4), period=5) #period is the number of generations to consider for the termination
 
 
 results = minimize(problem,
@@ -109,9 +109,10 @@ F = results.F
 
 df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'LCOS','EmCost'])
 df.to_excel('test_NSGAII_LCOS_EmCost.xlsx')
+
+
+#%% Display 
 coefficients = np.polyfit(df.LCOS.values, df.EmCost.values, best_polyfit_degree.MyFun(df.LCOS.values, df.EmCost.values ))
-
-
 
 xl, xu = problem.bounds()
 plt.figure(figsize=(7, 5))
@@ -140,17 +141,20 @@ plt.ylabel("Emissions cost [mil€]")
 plt.legend(loc = "best")
 plt.show()
 
+# %%
+
+df['gamma'] = df.Er/df.Pr
+
 alt.Chart(df, title = "Objective Space").mark_circle().encode(
     alt.X('LCOS').scale(zero=False),
     alt.Y('EmCost').scale(zero=False),
-    size = 'dist_id',
+    size = 'gamma',
     color = 'DoD'
 )
 
 alt.Chart(df[df.gamma<=10], title = "Less than 10hrs storage").mark_circle().encode(
     alt.X('LCOS').scale(zero=False),
     alt.Y('EmCost').scale(zero=False),
-    size = 'dist_id',
     color = 'DoD'
 )
 # %%

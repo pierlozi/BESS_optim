@@ -18,7 +18,7 @@ importlib.reload(dispatcher_dsctd)
 importlib.reload(microgrid_design)
 importlib.reload(rain_deg_funct)
 
-
+#%%
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
 
@@ -27,18 +27,21 @@ design = microgrid_design.MG(Pr_BES=30, \
                         Er_BES=275, \
                         P_load=P_load, \
                         P_ren=P_ren_read, \
-                        DoD=75
+                        DoD=75,
+                        optim_horiz = 24
                         )
 data, data_time = dispatcher_dsctd.MyFun(design, False)
 
 data_time['Datetime'] = pd.to_datetime(data_time['Datetime'], format = '%Y-%m-%d %H:%M:%S')
 data_time.set_index('Datetime', inplace=True)
 data_time['SOC'].to_csv('SOC.csv') # to then be analyzed in MATLAB
+#%%
+SOC_profile = pd.read_csv('SOC.csv')
 
 #%% Plots
 
-day_start_display = 0 #day_of_year.MyFun("15-08")
-days_display = 30
+day_start_display = 110 #day_of_year.MyFun("15-08")
+days_display = 5
 
 fig, ax_SOC = plt.subplots()
 

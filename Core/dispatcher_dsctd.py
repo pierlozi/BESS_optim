@@ -302,6 +302,7 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
         SOC = np.array([pyo.value(m.SOC[i]) for i in m.iIDX])
 
     P_BES = np.array([(pyo.value(m.P_dch[i]) - pyo.value(m.P_ch[i]) ) for i in m.iIDX])
+    P_RES = np.array([pyo.value(m.P_RES[i]) for i in m.iIDX])
     E_dch = pyo.value(sum(m.P_dch[i] for i in m.iIDX))
     P_dch = np.array([pyo.value(m.P_dch[i]) for i in m.iIDX])
     P_ch = np.array([pyo.value(m.P_ch[i]) for i in m.iIDX])
@@ -389,7 +390,8 @@ def MyFun(design, bin_var): #bin_var is to tell if power and energy rating are v
                               'P_curt': P_curt,
                               'P_dg': P_dg,
                               'P_prod':P_prod,
-                              'P_load': P_load
+                              'P_load': P_load,
+                              'P_RES': P_RES
 
                      })
     return data, data_time

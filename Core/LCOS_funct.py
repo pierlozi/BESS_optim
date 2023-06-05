@@ -12,8 +12,8 @@ def MyFun(design, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the othe
     BES_CAPEX = design.Pr_BES*design.C_P + design.Er_BES*(design.C_E+design.C_inst)*1e3 #€
     BES_OPEX = design.Pr_BES*design.C_POM*1e3 + design.Er_BES*design.C_EOM*1e3 #€/year
 
-    DG_CAPEX = design.DG_CAPEX
-    DG_OPEX = design.DG_OPEX
+    DG_CAPEX = design.DG_CAPEX*1e6 #€
+    DG_OPEX = design.DG_OPEX*1e6 #€
 
     #here I compute how many years of life the battery still has when the project is over (minelife), to compute residual value. I take into
     # account also that the battery will have been changed
@@ -33,7 +33,7 @@ def MyFun(design, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the othe
     else:
         res_val = 0
 
-    if Er_BES != 0 and Pr_BES != 0: #to avoid division by zero
+    if Er_BES.any() != 0 and Pr_BES.any() != 0: #to avoid division by zero
         
         
         LCOS_cost_cash_flow  = []
@@ -95,6 +95,8 @@ def MyFun(design, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the othe
         LCOS = sum(LCOS_cost_dsctd)/sum(P_dch_dsctd) #€/MWh
 
         NPC = sum(tot_cost_dsctd)/1e6 #million €
+
+        DG_ratio = 1 - sum(LCOS_cost_dsctd)/sum(tot_cost_dsctd)
     else:
 
         LCOS = float('NaN')
@@ -113,9 +115,12 @@ def MyFun(design, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the othe
 
         tot_cost_dsctd = []
 
-        for i in range(len(LCOS_cost_cash_flow)):
+        for i in range(len(tot_cost_cash_flow)):
             tot_cost_dsctd.append(tot_cost_cash_flow[i]/(1 + DR)**i)
 
         NPC = sum(tot_cost_dsctd)/1e6 #million €
+
+        DG_ratio = 1
+        
     
-    return LCOS, res_val, NPC
+    return LCOS, res_val, NPC, DG_ratio
