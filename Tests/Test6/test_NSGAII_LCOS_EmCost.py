@@ -41,6 +41,14 @@ importlib.reload(rain_deg_funct)
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
 
+design = microgrid_design.MG(Pr_BES=17.7, \
+                Er_BES=173, \
+                P_load=P_load, \
+                P_ren=P_ren_read
+                )
+
+P_lim = round(max(abs(P_ren_read['Power']*design.RES_fac/1e6-P_load['Load [MW]'])))
+E_lim = P_lim*10
 
 #%%
 
@@ -85,7 +93,7 @@ class ProblemWrapper(Problem):
 
 #the variables are in order Er_BES, Pr_BES, DoD
 
-problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [2000.,200.,80.], vtype=int)
+problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [E_lim,P_lim,80.], vtype=int)
 
 algorithm = NSGA2(pop_size=50,
                   sampling = IntegerRandomSampling(),
@@ -108,7 +116,7 @@ X = results.X
 F = results.F
 
 df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'LCOS','EmCost'])
-df.to_excel('test_NSGAII_LCOS_EmCost.xlsx')
+df.to_excel('test_NSGAII_LCOS_EmCost_2.xlsx')
 
 
 #%% Display 

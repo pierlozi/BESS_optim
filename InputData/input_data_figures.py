@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
+import altair as alt
 
 plt.rcParams.update({'font.size': 15}) 
 plt.rcParams.update({'figure.figsize' : [20, 7]})
@@ -40,7 +41,7 @@ plt.show()
 P_ren = pd.read_csv('RESData_option-2.csv', header=0, nrows = 8760) #W
 P_ren['Datetime'] =  pd.to_datetime(P_ren['Datetime'], format = '%Y-%m-%d %H:%M:%S')
 P_ren = P_ren.set_index('Datetime')
-fig = plt.figure()#figsize=[25, 7])
+fig = plt.figure() #figsize=[25, 7])
 
 ax_ren = fig.add_subplot()
 
@@ -60,4 +61,17 @@ ax_ren.xaxis.set_major_locator(MonthLocator(bymonthday=1))
 ax_ren.xaxis.set_major_formatter(DateFormatter('%B-%Y'))
 
 plt.savefig('RES_curve.png',bbox_inches='tight', dpi=150)
+# %%
+P_diff = pd.DataFrame(columns = ['Datetime', 'Power'])
+P_diff.Datetime = P_ren['Datetime']
+P_diff.Power = P_ren['Power']*7/1e6 - P_load['Load [MW]']
+
+alt.Chart(P_diff).mark_bar(width=1).encode(
+    x = 'Datetime:T',
+    y = 'Power',
+    color = alt.condition(alt.datum.Power > 0, alt.ColorValue('green'), alt.ColorValue('red'))
+).properties(
+    width = 'container',
+    height = 400
+)
 # %%

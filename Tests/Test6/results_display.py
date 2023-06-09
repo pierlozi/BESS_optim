@@ -19,14 +19,12 @@ from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
 
 plt.rcParams.update({'font.size': 12})
 
-df = pd.read_excel('test_NSGAII_NPC_EmCost.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('test_NSGAII_LCOS_EmCost.xlsx', index_col = 0, header= 0)
 
 X = np.array([list(elements) for elements in zip(df.iloc[:,0] ,df.iloc[:,1],df.iloc[:,2])])
 F = np.array([list(elements) for elements in zip(df.iloc[:,3], df.iloc[:,4])])
 
 #%%
-coefficients = np.polyfit(df.iloc[:,3], df.iloc[:,4], 4)#best_polyfit_degree.MyFun(df.iloc[:,3], df.iloc[:,4]))
-
 xl, xu = [X.min(axis=0), X.max(axis=0)]
 
 plt.figure(figsize=(7, 5))
@@ -47,7 +45,6 @@ plt.figure(figsize=(7, 5))
 plt.scatter(F[:, 0], F[:, 1], s=30, facecolors='none', edgecolors='blue')
 plt.scatter(approx_ideal[0], approx_ideal[1], facecolors='none', edgecolors='red', marker="*", s=100, label="Ideal Point (Approx)")
 plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none', edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
-plt.plot(np.linspace(df.iloc[:,3].min(), df.iloc[:,3].max(),100),np.polyval(coefficients, np.linspace(df.iloc[:,3].min()-15, df.iloc[:,3].max()+15,100)), color = 'green',label="PolyFit")
 
 plt.title("Objective Space")
 xstr = df.columns[-1]
@@ -59,34 +56,70 @@ plt.show()
 
 #%%
 df['gamma'] = df.iloc[:,0]/df.iloc[:,1]
+df_sorted = df.sort_values(by=['LCOS'])
 
 #%%
 fontsize = 20
-chart1 = alt.Chart(df, title = "Objective Space").mark_circle(size = 350).encode(
-        alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
+width = 700
+height = 3/4*width
+
+#%%
+chart1 =  alt.Chart(df_sorted[df_sorted.gamma<20], title = "Objective Space").mark_circle(size = 350).encode(
+        alt.X('Er').scale(zero=False),
+        alt.Y('Pr').scale(zero=False),
         color = 'DoD',
-        size = 'gamma'
-        ).properties(
-            width = 'container',
-            height = 500
-        ).configure_axis(
-            labelFontSize = fontsize,
-            titleFontSize = fontsize
-        ).configure_legend(
-            labelFontSize = fontsize,
-            titleFontSize = fontsize
-        ).configure_title(
-            fontSize = fontsize
+        size = alt.Size('gamma').title('Hours'),
+        tooltip = 'gamma'
         )
 
-chart2 = alt.Chart(pd.DataFrame({'Er': np.linspace(0,2000), 'Pr':1/10*np.linspace(0,2000)}))\
-                  .mark_line().encode(
-                                alt.X('Er').scale(domain = (0, df.Er.max()), clamp=True),
-                                alt.Y('Pr').scale(domain = (0,df.Pr.max()), clamp=True)
-                                ).properties(
-            width = 'container',
-            height = 500
+chart2 = alt.Chart(df_sorted[df_sorted.index==27]).mark_point(filled=True, size = 50, color = 'red').encode(
+        alt.X('Er').scale(zero=False),
+        alt.Y('Pr').scale(zero=False)
+)
+
+chart_des = alt.layer(chart1, chart2).configure_axis(
+            labelFontSize = fontsize,
+            titleFontSize = fontsize
+        ).configure_legend(
+            labelFontSize = fontsize,
+            titleFontSize = fontsize
+        ).configure_title(
+            fontSize = fontsize
+        ).properties(
+            width = width,
+            height = height
+        )
+chart_des
+
+#%%
+chart_des.save('pareto_LCOS_EmCost_des.png')
+
+#%%
+
+# chart2 = alt.Chart(pd.DataFrame({'Er': np.linspace(0,2000), 'Pr':1/10*np.linspace(0,2000)}))\
+#                   .mark_line().encode(
+#                                 alt.X('Er').scale(domain = (0, df.Er.max()), clamp=True),
+#                                 alt.Y('Pr').scale(domain = (0,df.Pr.max()), clamp=True)
+#                                 ).properties(
+#             width = width,
+#             height = height
+#         )
+
+chart1 = alt.Chart(df_sorted[df_sorted.gamma<30], title = "Objective Space").mark_circle(size = 350).encode(
+        alt.X('LCOS').scale(zero=False),
+        alt.Y('EmCost').scale(zero=False),
+        color = 'DoD',
+        size = alt.Size('gamma').title('Hours'),
+        tooltip = 'gamma'
+        )
+chart2 = alt.Chart(df_sorted[df_sorted.index==27]).mark_point(filled=True, size = 50, color = 'red').encode(
+        alt.X('LCOS').scale(zero=False),
+        alt.Y('EmCost').scale(zero=False)
+)
+
+chart_obj = alt.layer(chart1+chart2).properties(
+            width = width,
+            height = height
         ).configure_axis(
             labelFontSize = fontsize,
             titleFontSize = fontsize
@@ -96,22 +129,7 @@ chart2 = alt.Chart(pd.DataFrame({'Er': np.linspace(0,2000), 'Pr':1/10*np.linspac
         ).configure_title(
             fontSize = fontsize
         )
-chart3  = alt.Chart(df, title = "Design Space").mark_circle().encode(
-    alt.X('Er').scale(zero=False).title('Energy rating [MWh]'),
-    alt.Y('Pr').scale(zero=False).title('Power rating [MW]'),
-    size = 'gamma',
-    color = 'DoD'
-).properties(
-            width = 'container',
-            height = 500
-        ).configure_axis(
-            labelFontSize = fontsize,
-            titleFontSize = fontsize
-        ).configure_legend(
-            labelFontSize = fontsize,
-            titleFontSize = fontsize
-        ).configure_title(
-            fontSize = fontsize
-        )
-alt.vconcat(chart2+chart3, chart1)
+chart_obj
+# %%
+chart_obj.save('pareto_LCOS_EmCost_obj.png')
 # %%
