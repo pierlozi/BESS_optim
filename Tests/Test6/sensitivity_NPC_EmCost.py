@@ -19,7 +19,7 @@ load_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
 
-df = pd.read_excel('test_NSGAII_NPC_EmCost.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('test_NSGAII_NPC_EmCost_2.xlsx', index_col = 0, header= 0)
 
 df_sorted = df.sort_values(by=['NPC'], ignore_index=True)
 df_sorted['gamma'] = df.Er/df.Pr
@@ -113,10 +113,10 @@ def MyFun(design, Delta): #design has to have Er/Pr/DoD _0
     return F1_0, F2_0, df_DEr, df_DPr, df_DDoD, DF1, DF2
 
 #%%
-
-design = microgrid_design.MG(Pr_BES=df_sorted.iloc[19].Pr, \
-                                Er_BES=df_sorted.iloc[19].Er, \
-                                DoD = df_sorted.iloc[19].Er,\
+idx = 21
+design = microgrid_design.MG(Pr_BES=df_sorted.iloc[idx].Pr, \
+                                Er_BES=df_sorted.iloc[idx].Er, \
+                                DoD = df_sorted.iloc[idx].Er,\
                                 P_load=P_load, \
                                 P_ren=P_ren_read
                                 )
@@ -179,7 +179,7 @@ height = 200
 # unicode_Delta = \u0394
 #unicode_sub_0 = \u2080
 
-titlef1 = '\u0394LCOS/LCOS\u2080'
+titlef1 = '\u0394NPC/NPC\u2080'
 titlef2 = '\u0394EmCost/EmCost\u2080'
 
 titlex1 = '\u0394Er/Er\u2080'
@@ -268,6 +268,6 @@ chart_sensit = alt.hconcat(chartF1, chartF2)
 
 chart_sensit
 #%%
-chart_sensit.save('sensit_LCOS_EmCost_2.png')
+chart_sensit.save('sensit_NPC_EmCost_2.png')
 
 # %%

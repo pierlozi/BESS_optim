@@ -13,7 +13,6 @@ load_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model
 import numpy as np
 import pandas as pd
 import time
-import altair as alt
 
 from pymoo.optimize import minimize
 from pymoo.core.problem import Problem
@@ -23,6 +22,7 @@ from pymoo.termination.ftol import MultiObjectiveSpaceTermination
 from pymoo.termination.robust import RobustTermination
 from pymoo.operators.sampling.rnd import IntegerRandomSampling
 
+import altair as alt
 
 import matplotlib.pyplot as plt
 from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
@@ -50,7 +50,6 @@ design = microgrid_design.MG(Pr_BES=17.7, \
 P_lim = round(max(abs(P_ren_read['Power']*design.RES_fac/1e6-P_load['Load [MW]'])))
 E_lim = P_lim*10
 
-
 #%%
 
 class ProblemWrapper(Problem):
@@ -67,38 +66,35 @@ class ProblemWrapper(Problem):
                         Er_BES=173, \
                         P_load=P_load, \
                         P_ren=P_ren_read,
-                        price_f = 1.826 #original was 1.66
+                        price_f = 1.494 #original was 1.66
                         )
-        
+
         for x in designs:
 
-            design.Er_BES = x[0]
+            design.Er_BES = x[0] 
             design.Pr_BES = x[1]
             design.DoD = x[2]
 
-
             data, data_time = dispatcher_dsctd.MyFun(design, False)
 
-            
             design.DG_CAPEX = data['DG cost [million euros]']
             design.DG_OPEX = data['Fuel Cost [million euros]']
 
             design.cyclelife, _ = rain_deg_funct.MyFun(SOC_profile = data_time['SOC'].values)
 
-            _ , _ , NPC, _ = LCOS_funct.MyFun(design, \
+            LCOS, _ , _ , _ = LCOS_funct.MyFun(design, \
                                     E_dch = sum(data_time['P_dch']),\
                                     res_val_bin = True
                                     )
 
             emissions_cost = data['Emissions Cost [million euros]'].values[0]
-            res.append([NPC[0], emissions_cost]) #NPC is also in million euros
+            res.append([LCOS, emissions_cost])
         
         out['F'] = np.array(res)
-        #out['G'] = designs[0]/designs[1] - 10
 
 #the variables are in order Er_BES, Pr_BES, DoD
 
-problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [E_lim , P_lim ,80.], vtype=int)#, n_ieq_constr = 1)
+problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [E_lim,P_lim,80.], vtype=int)
 
 algorithm = NSGA2(pop_size=50,
                   sampling = IntegerRandomSampling(),
@@ -112,21 +108,20 @@ termination = RobustTermination(MultiObjectiveSpaceTermination(tol = 0.4), perio
 
 results = minimize(problem,
                algorithm,
-               termination
-               )  
+               termination)  
 
 print('Time:', results.exec_time)
 
-#%%
-
+#%% 
 X = results.X
 F = results.F
 
-df_p = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'NPC','EmCost'])
-df_p.to_excel('test_NSGAII_NPC_EmCost_plus10_2.xlsx')
+df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'LCOS','EmCost'])
+df.to_excel('test_NSGAII_LCOS_EmCost_minus10.xlsx')
 
-#%% Display
-coefficients = np.polyfit(df_p.NPC.values, df_p.EmCost.values, best_polyfit_degree.MyFun(df_p.NPC.values, df_p.EmCost.values ))
+
+#%% Display 
+coefficients = np.polyfit(df.LCOS.values, df.EmCost.values, best_polyfit_degree.MyFun(df.LCOS.values, df.EmCost.values ))
 
 xl, xu = problem.bounds()
 plt.figure(figsize=(7, 5))
@@ -147,33 +142,28 @@ plt.figure(figsize=(7, 5))
 plt.scatter(F[:, 0], F[:, 1], s=30, facecolors='none', edgecolors='blue')
 plt.scatter(approx_ideal[0], approx_ideal[1], facecolors='none', edgecolors='red', marker="*", s=100, label="Ideal Point (Approx)")
 plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none', edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
-plt.plot(np.linspace(df_p.NPC.min(), df_p.NPC.max(),100),np.polyval(coefficients, np.linspace(df_p.NPC.min()-15, df_p.NPC.max()+15,100)), color = 'green',label="PolyFit")
+plt.plot(np.linspace(df.LCOS.min(), df.LCOS.max(),100),np.polyval(coefficients, np.linspace(df.LCOS.min()-15, df.LCOS.max()+15,100)), color = 'green',label="PolyFit")
 
 plt.title("Objective Space")
-plt.xlabel("NPC [million €]")
-plt.ylabel("Emissions cost [million €]")
+plt.xlabel("LCOS [€/MWh]")
+plt.ylabel("Emissions cost [mil€]")
 plt.legend(loc = "best")
 plt.show()
 
-
 # %%
 
-df_p['gamma'] = df_p.Er/df_p.Pr
+df['gamma'] = df.Er/df.Pr
 
-chart0 = alt.Chart(df, title = "Objective Space").mark_circle(color = 'blue').encode(
-        alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
-        size = 'gamma'
-        )
-chart_p = alt.Chart(df_p, title = "Objective Space").mark_circle(color = 'red').encode(
-        alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
-        size = 'gamma'
-        )
-alt.layer(
-    chart0,
-    chart_p
+alt.Chart(df, title = "Objective Space").mark_circle().encode(
+    alt.X('LCOS').scale(zero=False),
+    alt.Y('EmCost').scale(zero=False),
+    size = 'gamma',
+    color = 'DoD'
 )
 
-
+alt.Chart(df[df.gamma<=10], title = "Less than 10hrs storage").mark_circle().encode(
+    alt.X('LCOS').scale(zero=False),
+    alt.Y('EmCost').scale(zero=False),
+    color = 'DoD'
+)
 # %%

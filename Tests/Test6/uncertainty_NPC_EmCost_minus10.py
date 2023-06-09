@@ -67,7 +67,7 @@ class ProblemWrapper(Problem):
                         Er_BES=173, \
                         P_load=P_load, \
                         P_ren=P_ren_read,
-                        price_f = 1.826 #original was 1.66
+                        price_f = 1.494 #original was 1.66
                         )
         
         for x in designs:
@@ -123,7 +123,7 @@ X = results.X
 F = results.F
 
 df_p = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'NPC','EmCost'])
-df_p.to_excel('test_NSGAII_NPC_EmCost_plus10_2.xlsx')
+df_p.to_excel('test_NSGAII_NPC_EmCost_minus10_2.xlsx')
 
 #%% Display
 coefficients = np.polyfit(df_p.NPC.values, df_p.EmCost.values, best_polyfit_degree.MyFun(df_p.NPC.values, df_p.EmCost.values ))
@@ -160,20 +160,20 @@ plt.show()
 
 df_p['gamma'] = df_p.Er/df_p.Pr
 
-chart0 = alt.Chart(df, title = "Objective Space").mark_circle(color = 'blue').encode(
+alt.Chart(df_p, title = "Objective Space").mark_circle().encode(
         alt.X('NPC').scale(zero=False),
         alt.Y('EmCost').scale(zero=False),
-        size = 'gamma'
+        size = 'gamma',
+        color = 'DoD'
         )
-chart_p = alt.Chart(df_p, title = "Objective Space").mark_circle(color = 'red').encode(
+
+#%%
+
+alt.Chart(df_p[df_p.gamma<=10], title = "Less than 10hrs storage").mark_circle().encode(
         alt.X('NPC').scale(zero=False),
         alt.Y('EmCost').scale(zero=False),
-        size = 'gamma'
+        color = 'DoD'
         )
-alt.layer(
-    chart0,
-    chart_p
-)
 
 
 # %%

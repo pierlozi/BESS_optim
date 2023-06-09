@@ -19,7 +19,7 @@ load_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
 
-df = pd.read_excel('test_NSGAII_LCOS_EmCost.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('test_NSGAII_LCOS_EmCost_2.xlsx', index_col = 0, header= 0)
 
 df_sorted = df.sort_values(by=['LCOS'], ignore_index=True)
 df_sorted['gamma'] = df.Er/df.Pr
@@ -93,7 +93,7 @@ def MyFun(design, Delta): #design has to have Er/Pr/DoD _0
     df_F1.negative = DF1[:,0]
     df_F1.positive = DF1[:,1]
 
-    df_DEr.DX = df.DPr.DX = df.DDoD.DX = [-Delta, Delta]
+    df_DEr.DX = df_DPr.DX = df_DDoD.DX = [-Delta, Delta]
 
     df_DEr.DF1 = DF1[0]
     df_DEr.DF2 = DF2[0]
@@ -114,9 +114,11 @@ def MyFun(design, Delta): #design has to have Er/Pr/DoD _0
 
 #%%
 
-design = microgrid_design.MG(Pr_BES=df_sorted.iloc[27].Pr, \
-                                Er_BES=df_sorted.iloc[27].Er, \
-                                DoD = df_sorted.iloc[27].Er,\
+idx = 21
+
+design = microgrid_design.MG(Pr_BES=df_sorted.iloc[idx].Pr, \
+                                Er_BES=df_sorted.iloc[idx].Er, \
+                                DoD = df_sorted.iloc[idx].Er,\
                                 P_load=P_load, \
                                 P_ren=P_ren_read
                                 )
