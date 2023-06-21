@@ -19,13 +19,18 @@ from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
 
 plt.rcParams.update({'font.size': 12})
 
-df = pd.read_excel('test_NSGAII_NPC_EmCost_2.xlsx', index_col = 0, header= 0)
-df_p = pd.read_excel('test_NSGAII_NPC_EmCost_plus10_2.xlsx', index_col = 0, header= 0)
-df_m = pd.read_excel('test_NSGAII_NPC_EmCost_minus10_2.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('test_NSGAII_LCOS_1-RU.xlsx', index_col = 0, header= 0)
+df_p = pd.read_excel('test_NSGAII_LCOS_1-RU_plus10.xlsx', index_col = 0, header= 0)
+df_m = pd.read_excel('test_NSGAII_LCOS_1-RU_minus10.xlsx', index_col = 0, header= 0)
 
 df['gamma'] = df.Er/df.Pr
 df_p['gamma'] = df_p.Er/df_p.Pr
 df_m['gamma'] = df_m.Er/df_m.Pr
+
+#%%
+fontsize = 20
+width = 700
+height = 3/4*width
 
 #%% Design Space
 chart_f0 = alt.Chart(df, title = "Design Space").mark_circle(color = 'blue').encode(
@@ -43,30 +48,61 @@ chart_fm = alt.Chart(df_m, title = "Design Space").mark_circle(color = 'green').
         alt.Y('Pr').scale(zero=False),
         size = 'gamma'
         )
-alt.layer(
+chart_des = alt.layer(
     chart_f0,
     chart_fp,
     chart_fm
-)
+).configure_axis(
+            labelFontSize = fontsize,
+            titleFontSize = fontsize
+        ).configure_legend(
+            labelFontSize = fontsize,
+            titleFontSize = fontsize
+        ).configure_title(
+            fontSize = fontsize
+        ).properties(
+            width = width,
+            height = height
+        )
+
+chart_des
+
 #%% Objective Space
 chart_f0 = alt.Chart(df, title = "Objective Space").mark_circle(color = 'blue').encode(
-        alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
+        alt.X('LCOS').scale(zero=False),
+        alt.Y('1-RU').scale(zero=False),
         size = 'gamma'
         )
 chart_fp = alt.Chart(df_p, title = "Objective Space").mark_circle(color = 'red').encode(
-        alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
+        alt.X('LCOS').scale(zero=False),
+        alt.Y('1-RU').scale(zero=False),
         size = 'gamma'
         )
 chart_fm = alt.Chart(df_m, title = "Design Space").mark_circle(color = 'green').encode(
-        alt.X('NPC').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
+        alt.X('LCOS').scale(zero=False),
+        alt.Y('1-RU').scale(zero=False),
         size = 'gamma'
         )
-alt.layer(
+chart_obj = alt.layer(
     chart_f0,
     chart_fp,
     chart_fm
-)
+        ).configure_axis(
+            labelFontSize = fontsize,
+            titleFontSize = fontsize
+        ).configure_legend(
+            labelFontSize = fontsize,
+            titleFontSize = fontsize
+        ).configure_title(
+            fontSize = fontsize
+        ).properties(
+            width = width,
+            height = height
+        )
+
+chart_obj
+# %%
+
+chart_des.save('uncertainty_LCOS_1-RU_des.png')
+chart_obj.save('uncertainty_LCOS_1-RU_obj.png')
 # %%

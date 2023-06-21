@@ -41,6 +41,14 @@ importlib.reload(rain_deg_funct)
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
 
+design = microgrid_design.MG(Pr_BES=17.7, \
+                Er_BES=173, \
+                P_load=P_load, \
+                P_ren=P_ren_read
+                )
+
+P_lim = round(max(abs(P_ren_read['Power']*design.RES_fac/1e6-P_load['Load [MW]'])))
+E_lim = P_lim*10
 
 #%%
 
@@ -71,25 +79,30 @@ class ProblemWrapper(Problem):
             design.DG_CAPEX = data['DG cost [million euros]']
             design.DG_OPEX = data['Fuel Cost [million euros]']
 
-            RU = (sum(data_time['P_RES'] + data_time['P_dch']))/sum(data_time['P_load'])
+            design.cyclelife, _ = rain_deg_funct.MyFun(SOC_profile = data_time['SOC'].values)
+
+            LCOS, _ , _ , _ = LCOS_funct.MyFun(design, \
+                                    E_dch = sum(data_time['P_dch']),\
+                                    res_val_bin = True
+                                    )
 
             emissions_cost = data['Emissions Cost [million euros]'].values[0]
-            res.append([RU, emissions_cost])
+            res.append([LCOS, emissions_cost])
         
         out['F'] = np.array(res)
 
 #the variables are in order Er_BES, Pr_BES, DoD
 
-problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [2000.,200.,80.], vtype=int)
+problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [E_lim,P_lim,80.], vtype=int)
 
-algorithm = NSGA2(pop_size=30,
+algorithm = NSGA2(pop_size=50,
                   sampling = IntegerRandomSampling(),
                   eliminate_duplicates=True
                   )
 
 #termination = get_termination("n_gen", 1) # | get_termination("tolx", 1) # | get_termination("f_tol", 0.01)
 
-termination = RobustTermination(MultiObjectiveSpaceTermination(tol = 0.5), period=5) #period is the number of generations to consider for the termination
+termination = RobustTermination(MultiObjectiveSpaceTermination(tol = 0.4), period=5) #period is the number of generations to consider for the termination
 
 
 results = minimize(problem,
@@ -102,12 +115,12 @@ print('Time:', results.exec_time)
 X = results.X
 F = results.F
 
-df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'RU','EmCost'])
-df.to_excel('test_NSGAII_RU_EmCost.xlsx')
+df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'LCOS','EmCost'])
+df.to_excel('test_NSGAII_LCOS_EmCost_2.xlsx')
 
 
 #%% Display 
-coefficients = np.polyfit(df.RU.values, df.EmCost.values, best_polyfit_degree.MyFun(df.RU.values, df.EmCost.values ))
+coefficients = np.polyfit(df.LCOS.values, df.EmCost.values, best_polyfit_degree.MyFun(df.LCOS.values, df.EmCost.values ))
 
 xl, xu = problem.bounds()
 plt.figure(figsize=(7, 5))
@@ -123,17 +136,16 @@ plt.show()
 
 approx_ideal = F.min(axis=0) # gives an array with the minimum for every column
 approx_nadir = F.max(axis=0)
-#%%
+
 plt.figure(figsize=(7, 5))
 plt.scatter(F[:, 0], F[:, 1], s=30, facecolors='none', edgecolors='blue')
 plt.scatter(approx_ideal[0], approx_ideal[1], facecolors='none', edgecolors='red', marker="*", s=100, label="Ideal Point (Approx)")
 plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none', edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
-#plt.plot(np.linspace(df.RU.min(), df.RU.max(),100),np.polyval(coefficients, np.linspace(df.RU.min()-15, df.RU.max()+15,100)), color = 'green',label="PolyFit")
+plt.plot(np.linspace(df.LCOS.min(), df.LCOS.max(),100),np.polyval(coefficients, np.linspace(df.LCOS.min()-15, df.LCOS.max()+15,100)), color = 'green',label="PolyFit")
 
 plt.title("Objective Space")
-plt.xlabel("RU [-]")
+plt.xlabel("LCOS [€/MWh]")
 plt.ylabel("Emissions cost [mil€]")
-plt.ylim([0,40])
 plt.legend(loc = "best")
 plt.show()
 
@@ -142,15 +154,15 @@ plt.show()
 df['gamma'] = df.Er/df.Pr
 
 alt.Chart(df, title = "Objective Space").mark_circle().encode(
-    alt.X('RU').scale(zero=False),
+    alt.X('LCOS').scale(zero=False),
     alt.Y('EmCost').scale(zero=False),
     size = 'gamma',
     color = 'DoD'
 )
 
-# alt.Chart(df[df.gamma<=10], title = "Less than 10hrs storage").mark_circle().encode(
-#     alt.X('RU').scale(zero=False),
-#     alt.Y('EmCost').scale(zero=False),
-#     color = 'DoD'
-# )
+alt.Chart(df[df.gamma<=10], title = "Less than 10hrs storage").mark_circle().encode(
+    alt.X('LCOS').scale(zero=False),
+    alt.Y('EmCost').scale(zero=False),
+    color = 'DoD'
+)
 # %%

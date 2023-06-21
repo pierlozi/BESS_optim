@@ -20,7 +20,7 @@ def MyFun(design, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the othe
 
     if res_val_bin:
 
-        if minelife>=floatlife:
+        if minelife>=floatlife: #if the life of the mine is greater then the maximum life of the battery
 
             if floatlife >= cyclelife:
                 BES_usage, _ = math.modf(minelife/cyclelife)
@@ -123,4 +123,4 @@ def MyFun(design, E_dch, res_val_bin : bool): #cyclelife from raifnlow, the othe
         DG_ratio = 1
         
     
-    return LCOS, res_val, NPC, DG_ratio
+    return LCOS, BES_usage, NPC, DG_ratio

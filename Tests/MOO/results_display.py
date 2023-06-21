@@ -19,12 +19,12 @@ from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
 
 plt.rcParams.update({'font.size': 12})
 
-df = pd.read_excel('test_NSGAII_LCOS_EmCost.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('LCOS_1-RU/test_NSGAII_LCOS_1-RU.xlsx', index_col = 0, header= 0)
 
 X = np.array([list(elements) for elements in zip(df.iloc[:,0] ,df.iloc[:,1],df.iloc[:,2])])
 F = np.array([list(elements) for elements in zip(df.iloc[:,3], df.iloc[:,4])])
 
-#%%
+df#%%
 xl, xu = [X.min(axis=0), X.max(axis=0)]
 
 plt.figure(figsize=(7, 5))
@@ -56,7 +56,7 @@ plt.show()
 
 #%%
 df['gamma'] = df.iloc[:,0]/df.iloc[:,1]
-df_sorted = df.sort_values(by=['LCOS'])
+df_sorted = df.sort_values(by=[df.columns[-3]], ignore_index=True)
 
 #%%
 fontsize = 20
@@ -64,15 +64,15 @@ width = 700
 height = 3/4*width
 
 #%%
-chart1 =  alt.Chart(df_sorted[df_sorted.gamma<20], title = "Objective Space").mark_circle(size = 350).encode(
-        alt.X('Er').scale(zero=False),
-        alt.Y('Pr').scale(zero=False),
+chart1 =  alt.Chart(df_sorted, title = "Design Space").mark_circle(size = 350).encode(
+        alt.X('Er').scale(zero=False).title('Capacity rating [MWh]'),
+        alt.Y('Pr').scale(zero=False).title('Power rating [MW]'),
         color = 'DoD',
-        size = alt.Size('gamma').title('Hours'),
+        size = alt.Size('gamma').title(['Hours','Of','Storage']),
         tooltip = 'gamma'
         )
 
-chart2 = alt.Chart(df_sorted[df_sorted.index==27]).mark_point(filled=True, size = 50, color = 'red').encode(
+chart2 = alt.Chart(df_sorted[df_sorted.index==21]).mark_point(filled=True, size = 50, color = 'red').encode(
         alt.X('Er').scale(zero=False),
         alt.Y('Pr').scale(zero=False)
 )
@@ -92,7 +92,7 @@ chart_des = alt.layer(chart1, chart2).configure_axis(
 chart_des
 
 #%%
-chart_des.save('pareto_LCOS_EmCost_des.png')
+chart_des.save('pareto_NPC_EmCost_des.png')
 
 #%%
 
@@ -105,16 +105,16 @@ chart_des.save('pareto_LCOS_EmCost_des.png')
 #             height = height
 #         )
 
-chart1 = alt.Chart(df_sorted[df_sorted.gamma<30], title = "Objective Space").mark_circle(size = 350).encode(
-        alt.X('LCOS').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False),
+chart1 = alt.Chart(df_sorted, title = "Objective Space").mark_circle(size = 350).encode(
+        alt.X(df_sorted.columns[-3]).scale(zero=False).title('NPC [million €]'),
+        alt.Y(df_sorted.columns[-2]).scale(zero=False).title('EC [million €]'),
         color = 'DoD',
-        size = alt.Size('gamma').title('Hours'),
+        size = alt.Size('gamma').title(['Hours','Of','Storage']),
         tooltip = 'gamma'
         )
-chart2 = alt.Chart(df_sorted[df_sorted.index==27]).mark_point(filled=True, size = 50, color = 'red').encode(
-        alt.X('LCOS').scale(zero=False),
-        alt.Y('EmCost').scale(zero=False)
+chart2 = alt.Chart(df_sorted[df_sorted.index==21]).mark_point(filled=True, size = 50, color = 'red').encode(
+        alt.X(df_sorted.columns[-3]).scale(zero=False),
+        alt.Y(df_sorted.columns[-2]).scale(zero=False)
 )
 
 chart_obj = alt.layer(chart1+chart2).properties(
@@ -131,5 +131,5 @@ chart_obj = alt.layer(chart1+chart2).properties(
         )
 chart_obj
 # %%
-chart_obj.save('pareto_LCOS_EmCost_obj.png')
+chart_obj.save('pareto_NPC_EmCost_obj.png')
 # %%

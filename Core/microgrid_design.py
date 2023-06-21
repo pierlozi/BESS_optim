@@ -60,7 +60,7 @@ class MG(): #MG stands for microgrid
 
     def __init__(self, optim_horiz = 8760, Er_BES=None, Pr_BES=None, P_load=pd.DataFrame() ,\
                  P_ren=pd.DataFrame(), minelife=13, RES_fac=7, floatlife=10, C_P=360, C_E=320, \
-                 C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, DR=5/100, DoD=75, cyclelife=2700, \
+                 C_inst=15, C_POM=5, C_EOM=0, sigma=0.2/100, DR=5/100, DoD=75, SOC_min = 25, SOC_max = 80, cyclelife=2700, \
                  eff = 0.95, price_f=1.66, C_DG=500, SOC_w = 0, alpha = 0.246, beta = 0.08145, \
                  p_NOx = 10.0714, p_SO2 = 2.3747, p_CO2 = 0.0336,\
                  ef_NOx = 0.0218, ef_SO2 = 0.000454, ef_CO2 = 0.001432,\
@@ -90,6 +90,8 @@ class MG(): #MG stands for microgrid
 
         self.eff = eff # battery charge and discharge efficiency
 
+        self.SOC_max = SOC_max # [%] Maximum SOC reachable
+        self.SOC_min = SOC_min # [%] Minimum SOC reachable - same as (1-DoD)
         self.DoD = DoD # [%] Depth of Discharge at which battery works
         self.cyclelife = cyclelife # [cycles] cyclelife corresponding to set DoD
 

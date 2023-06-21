@@ -19,9 +19,9 @@ load_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
 
-df = pd.read_excel('test_NSGAII_NPC_EmCost_2.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('test_NSGAII_LCOS_EmCost_2.xlsx', index_col = 0, header= 0)
 
-df_sorted = df.sort_values(by=['NPC'], ignore_index=True)
+df_sorted = df.sort_values(by=['LCOS'], ignore_index=True)
 df_sorted['gamma'] = df.Er/df.Pr
 
 
@@ -113,7 +113,9 @@ def MyFun(design, Delta): #design has to have Er/Pr/DoD _0
     return F1_0, F2_0, df_DEr, df_DPr, df_DDoD, DF1, DF2
 
 #%%
+
 idx = 21
+
 design = microgrid_design.MG(Pr_BES=df_sorted.iloc[idx].Pr, \
                                 Er_BES=df_sorted.iloc[idx].Er, \
                                 DoD = df_sorted.iloc[idx].Er,\
@@ -122,6 +124,44 @@ design = microgrid_design.MG(Pr_BES=df_sorted.iloc[idx].Pr, \
                                 )
 
 F1_0, F2_0, df_DEr, df_DPr, df_DDoD, DF1, DF2 = MyFun(design, 0.1)
+
+#%% Saving the sensitivity data
+dictionary = {
+    'DEr': df_DEr,
+    'DPr': df_DPr,
+    'DDoD': df_DDoD
+}
+
+# Iterate over each key-value pair in the dictionary
+for key, df in dictionary.items():
+    # Add the 'Key' column with the key value to the DataFrame
+    df['Key'] = key
+    
+# Concatenate the DataFrames into a single DataFrame
+df_combined = pd.concat(dictionary.values())
+
+# Save the combined DataFrame to a CSV file
+df_combined.to_csv('sensitivity_LCOS_EmCost.csv', index=False)
+
+#%% Reading the sensitivity data
+# Read the CSV file into a DataFrame
+df_combined = pd.read_csv('sensitivity_LCOS_EmCost.csv')
+
+# Create a dictionary to store the separate DataFrames
+data = {}
+
+# Iterate over unique keys in the 'Key' column
+for key in df_combined['Key'].unique():
+    # Filter the DataFrame based on the key
+    df = df_combined[df_combined['Key'] == key].drop(columns='Key')
+    
+    # Store the DataFrame with the key as the variable name
+    data[f"df_{key}"] = df
+
+# Access the separate DataFrames using their variable names
+df_DEr = data['df_DEr']
+df_DPr = data['df_DPr']
+df_DDoD = data['df_DDoD']
 
 #%%
 # xdom1 = max(df_F1.iloc[:, 1:].abs().max()*1.1)
@@ -179,8 +219,8 @@ height = 200
 # unicode_Delta = \u0394
 #unicode_sub_0 = \u2080
 
-titlef1 = '\u0394NPC/NPC\u2080'
-titlef2 = '\u0394EmCost/EmCost\u2080'
+titlef1 = '\u0394LCOS/LCOS\u2080'
+titlef2 = '\u0394EC/EC\u2080'
 
 titlex1 = '\u0394Er/Er\u2080'
 titlex2 = '\u0394Pr/Pr\u2080'
@@ -268,6 +308,6 @@ chart_sensit = alt.hconcat(chartF1, chartF2)
 
 chart_sensit
 #%%
-chart_sensit.save('sensit_NPC_EmCost_2.png')
+chart_sensit.save('sensit_LCOS_EmCost_2.png')
 
 # %%
