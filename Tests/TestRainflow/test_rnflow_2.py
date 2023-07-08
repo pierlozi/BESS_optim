@@ -11,10 +11,10 @@ sys.path.append(r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model")
 RES_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model\InputData\RESData_option-2.csv"
 load_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model\InputData\load_data.xlsx"
 
-from Core import dispatcher_dsctd, microgrid_design, LCOS_funct, rain_deg_funct
+from Core import dispatcher_DoD, microgrid_design, LCOS_funct, rain_deg_funct
 
 import importlib
-importlib.reload(dispatcher_dsctd)
+importlib.reload(dispatcher_DoD)
 importlib.reload(microgrid_design)
 importlib.reload(rain_deg_funct)
 
@@ -27,17 +27,16 @@ design = microgrid_design.MG(Pr_BES=30, \
                         Er_BES=275, \
                         P_load=P_load, \
                         P_ren=P_ren_read, \
-                        DoD=75,
-                        optim_horiz = 24
+                        DoD=75
                         )
-data, data_time = dispatcher_dsctd.MyFun(design, False)
+data, data_time = dispatcher_DoD.MyFun(design, False)
 
 data_time['Datetime'] = pd.to_datetime(data_time['Datetime'], format = '%Y-%m-%d %H:%M:%S')
 data_time.set_index('Datetime', inplace=True)
-data_time['SOC'].to_csv('SOC.csv') # to then be analyzed in MATLAB
+data_time['SOC'].to_csv('SOC_2.csv') # to then be analyzed in MATLAB
 #%%
 SOC_profile = pd.read_csv('SOC.csv')
-
+#SOC_profile = data_time['SOC']
 #%% Plots
 
 day_start_display = 110 #day_of_year.MyFun("15-08")
@@ -66,16 +65,16 @@ plt.show()
 
 # %%
 cyclelife, SOH = rain_deg_funct.MyFun(data_time['SOC'])
-L_sei_MATLAB = pd.read_csv('L_sei_MATLAB.csv', header = None)
+L_sei_MATLAB = pd.read_csv('L_sei_MATLAB_2.csv', header = None)
 SOH_MATLAB = 1 - L_sei_MATLAB[0].values
 
 #%%
 
-plt.plot(SOH, label='Python')
-plt.plot(SOH_MATLAB, label = 'MATLAB')
+plt.plot(SOH[0:42], label='Python')
+plt.plot(SOH_MATLAB[0:42], label = 'MATLAB')
 plt.grid(True)
 plt.xlabel('Years')
-plt.ylabel('State Of Healt [-]')
+plt.ylabel('1 - L [-]')
 plt.legend(['Python', 'MATLAB'])
 
 # %%

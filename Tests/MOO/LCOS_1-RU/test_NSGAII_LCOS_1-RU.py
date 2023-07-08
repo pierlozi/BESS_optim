@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.append(r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model")
-from Core import dispatcher_dsctd
+from Core import dispatcher_DoD
 from Core import microgrid_design
 from Core import rain_deg_funct, LCOS_funct
 from Core import best_polyfit_degree
@@ -30,7 +30,7 @@ from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
 plt.rcParams.update({'font.size': 12})
 
 import importlib
-importlib.reload(dispatcher_dsctd)
+importlib.reload(dispatcher_DoD)
 importlib.reload(microgrid_design)
 importlib.reload(LCOS_funct)
 importlib.reload(rain_deg_funct)
@@ -73,7 +73,7 @@ class ProblemWrapper(Problem):
             design.Pr_BES = x[1]
             design.DoD = x[2]
 
-            data, data_time = dispatcher_dsctd.MyFun(design, False)
+            data, data_time = dispatcher_DoD.MyFun(design, False)
 
             design.DG_CAPEX = data['DG cost [million euros]']
             design.DG_OPEX = data['Fuel Cost [million euros]']
@@ -94,7 +94,7 @@ class ProblemWrapper(Problem):
 
 #the variables are in order Er_BES, Pr_BES, DoD
 
-problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,20.], xu = [E_lim, P_lim ,100.], vtype=int)
+problem = ProblemWrapper(n_var=3, n_obj=2, xl=[0.,0.,0.], xu = [E_lim, P_lim ,100.], vtype=int)
 
 algorithm = NSGA2(pop_size=50,
                   sampling = IntegerRandomSampling(),
@@ -117,7 +117,7 @@ X = results.X
 F = results.F
 
 df = pd.DataFrame(np.concatenate((X,F), axis = 1), columns = ['Er', 'Pr', 'DoD', 'LCOS','1-RU'])
-df.to_excel('test_NSGAII_LCOS_1-RU_DoD_up_100.xlsx')
+df.to_excel('test_NSGAII_LCOS_1-RU_DoD_update.xlsx')
 
 
 #%% Display 

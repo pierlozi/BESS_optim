@@ -1,5 +1,5 @@
 
-data_time = readmatrix('SOC.csv');
+data_time = readmatrix('SOC_2.csv');
 SOC = data_time(:,2)';
 
 
@@ -42,7 +42,7 @@ for ii=1:100
 
 end
 
-%writematrix(L_sei', 'L_sei_MATLAB.csv')
+writematrix(L_sei', 'L_sei_MATLAB_2.csv')
 
 
 

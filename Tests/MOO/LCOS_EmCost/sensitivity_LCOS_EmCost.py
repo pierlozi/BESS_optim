@@ -19,12 +19,12 @@ load_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model
 P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_load = pd.read_excel(load_data_file_path, sheet_name='Yearly Load', header=0)
 
-df = pd.read_excel('test_NSGAII_LCOS_EmCost_2.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('test_NSGAII_LCOS_EmCost_DoD_update.xlsx', index_col = 0, header= 0)
 
 df_sorted = df.sort_values(by=['LCOS'], ignore_index=True)
-df_sorted['gamma'] = df.Er/df.Pr
+df_sorted['gamma'] = df_sorted.Er/df_sorted.Pr
 
-
+#%%
 def MyFun(design, Delta): #design has to have Er/Pr/DoD _0
     
     design_0 = design
@@ -114,7 +114,7 @@ def MyFun(design, Delta): #design has to have Er/Pr/DoD _0
 
 #%%
 
-idx = 21
+idx = 28
 
 design = microgrid_design.MG(Pr_BES=df_sorted.iloc[idx].Pr, \
                                 Er_BES=df_sorted.iloc[idx].Er, \
@@ -210,8 +210,10 @@ df_DDoD = data['df_DDoD']
 # chart_sensit = alt.vconcat(chart_F1, chart_F2)
 # chart_sensit
 # %%
+DF1 = np.array([df_DEr['DF1'].abs().max(), df_DPr['DF1'].abs().max(), df_DDoD['DF1'].abs().max()])
+DF2 = np.array([df_DEr['DF2'].abs().max(), df_DPr['DF2'].abs().max(), df_DDoD['DF2'].abs().max()])
+xdom = np.maximum(DF1.max(), DF2.max())*1.1
 
-xdom = np.maximum(np.max(abs(DF1)), np.max(abs(DF2)))*1.1
 
 width = 175
 height = 200
@@ -302,9 +304,16 @@ chart6 = alt.Chart(df_DDoD).mark_bar(size = 20).encode(
             height = height
         )
 
-chartF1 = alt.vconcat(chart1, chart2, chart3)
-chartF2 = alt.vconcat(chart4, chart5, chart6)
-chart_sensit = alt.hconcat(chartF1, chartF2)
+#%%
+spacing = 40
+
+chartF1 = alt.hconcat(chart1, chart2, chart3, spacing = spacing)
+chartF2 = alt.hconcat(chart4, chart5, chart6, spacing = spacing)
+
+chart_sensit = alt.vconcat(chartF1, chartF2, spacing = spacing).configure_axis(
+            labelFontSize = 15,
+            titleFontSize = 20
+        )
 
 chart_sensit
 #%%

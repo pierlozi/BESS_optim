@@ -19,12 +19,12 @@ from matplotlib.dates import MonthLocator, DateFormatter, DayLocator
 
 plt.rcParams.update({'font.size': 12})
 
-df = pd.read_excel('LCOS_1-RU/test_NSGAII_LCOS_1-RU.xlsx', index_col = 0, header= 0)
+df = pd.read_excel('NPC_EmCost/test_NSGAII_NPC_EmCost_DoD_update.xlsx', index_col = 0, header= 0)
 
 X = np.array([list(elements) for elements in zip(df.iloc[:,0] ,df.iloc[:,1],df.iloc[:,2])])
 F = np.array([list(elements) for elements in zip(df.iloc[:,3], df.iloc[:,4])])
 
-df#%%
+#%%
 xl, xu = [X.min(axis=0), X.max(axis=0)]
 
 plt.figure(figsize=(7, 5))
@@ -92,7 +92,7 @@ chart_des = alt.layer(chart1, chart2).configure_axis(
 chart_des
 
 #%%
-chart_des.save('pareto_NPC_EmCost_des.png')
+chart_des.save('pareto_NPC_EmCost_DoD_update_des.png')
 
 #%%
 
@@ -131,5 +131,5 @@ chart_obj = alt.layer(chart1+chart2).properties(
         )
 chart_obj
 # %%
-chart_obj.save('pareto_NPC_EmCost_obj.png')
+chart_obj.save('pareto_NPC_EmCost_DoD_update_obj.png')
 # %%

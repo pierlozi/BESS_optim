@@ -108,8 +108,15 @@ funct_f_cyc_i = lambda d, s, T: funct_S_d(d)* funct_S_s(s) * funct_S_T(T)   #cyc
 funct_f_cal = lambda s, t, T: funct_S_s(s) * funct_S_t(t) * funct_S_T(T)  #calendar ageing
 
 L_sei = []
-L_sei_no_cyc = []
+L_sei_calendar = []
+L_sei_cyclic = []
 f_ratio = []
+
+dfs_time_tot = pd.read_csv('test_rainflow_DoDs.csv')
+dfs_time_tot = dfs_time_tot.groupby('DoD').apply(lambda x: x.set_index('DoD'))
+
+DoDs = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+
 for DoD in DoDs:
 
     SOC_profile = dfs_time_tot.loc[DoD]['SOC'].values
@@ -128,14 +135,28 @@ for DoD in DoDs:
     f_cal = funct_f_cal(SOC_avg, 3600*8760, T_ref)
     f_d = f_cyc.sum() + f_cal
     L_sei.append(1 - a_sei * np.exp(-b_sei*f_d) - (1-a_sei)*np.exp(-f_d))
-    L_sei_no_cyc.append(1 - a_sei * np.exp(-b_sei*f_cal) - (1-a_sei)*np.exp(-f_cal))
+    L_sei_calendar.append(1 - a_sei * np.exp(-b_sei*f_cal) - (1-a_sei)*np.exp(-f_cal))
+    L_sei_cyclic.append(1 - a_sei * np.exp(-b_sei*f_cyc.sum()) - (1-a_sei)*np.exp(-f_cyc.sum()))
 
+L_sei = np.array(L_sei)
+L_sei_calendar = np.array(L_sei_calendar)
+L_sei_cyclic = np.array(L_sei_cyclic)
+
+#%%
 fig, ax = plt.subplots()
 
-ax.plot(L_sei, label='Tot')
-ax.plot(L_sei_no_cyc, label='No Cyc') #non considero degrado ciclico
+ax.plot(DoDs, L_sei, label='Total')
+ax.plot(DoDs, L_sei_calendar, label='Calendar') #non considero degrado ciclico
+ax.plot(DoDs, L_sei_cyclic, label='Cyclic')
+
+ax.set_title('Degradation after 1 year')
+ax.set_xlabel('DoD [%]')
+ax.set_ylabel('L [-]')
 
 ax.legend(loc='best')
+
+plt.grid(True)
+plt.show()
 #nel grafico si vede che piú il Dod concesso é grande piu il calendar ageing ad un anno di dispatch diminuisce: questo perche piu il dod e grande 
 # piu il dispatcher produce un profilo di carica nel quale l'average SOC é mediamente piu basso
 # %%

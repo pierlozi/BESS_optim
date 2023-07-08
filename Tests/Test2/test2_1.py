@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.append(r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model")
-from Core import dispatcher_dsctd
+from Core import dispatcher_DoD
 from Core import microgrid_design
 
 RES_data_file_path = r"C:\Users\SEPILOS\OneDrive - ABB\Documents\Projects\Model\InputData\RESData_option-2.csv"
@@ -25,10 +25,11 @@ P_ren_read = pd.read_csv(RES_data_file_path, header=0, nrows = 8760) #W
 P_ren_read['Datetime'] =  pd.to_datetime(P_ren_read['Datetime'], format = '%Y-%m-%d %H:%M:%S')
 P_ren_read['Power'] = sin_ren
 
-load_avg = np.linspace(min(P_ren_read['Power']),max(P_ren_read['Power']) + 2*(max(P_ren_read['Power']) - min(P_ren_read['Power'])) , 61)
+load_avg = np.linspace(min(P_ren_read['Power']), max(P_ren_read['Power']) + 1/2*(max(P_ren_read['Power']) - min(P_ren_read['Power'])) , 16)
+#%%
 
-design = microgrid_design.MG(P_ren=P_ren_read)
-design.optim_horiz = 24*4
+design = microgrid_design.MG(P_ren=P_ren_read, DoD = 100, RES_fac=1, eff=1, sigma=0)
+design.optim_horiz = 24*3
 
 df = pd.DataFrame()
 dfs_time = []
@@ -36,7 +37,7 @@ dfs_time = []
 i = 0
 for load in load_avg:
     design.P_load['Load [MW]'] = load*np.ones(8760)/1e6 #MW
-    data, data_time = dispatcher_dsctd.MyFun(design, True)
+    data, data_time = dispatcher_DoD.MyFun(design, True)
 
     df = pd.concat([df,data], ignore_index=True)
     df.loc[i, 'Load [%]'] = (load - load_avg[0])/(max(P_ren_read['Power'])-min(P_ren_read['Power']))*100
@@ -50,17 +51,17 @@ dfs_time_tot = pd.concat(dfs_time)
 df.set_index('Load [%]', inplace=True)
 
 #%%
-df.to_excel("test2_2_df_load_0_145.xlsx")
-dfs_time_tot.to_excel("test2_2_dfs_time_tot_load_0_300.xlsx")
+# df.to_excel("test2_2_df_load_0_145.xlsx")
+# dfs_time_tot.to_excel("test2_2_dfs_time_tot_load_0_300.xlsx")
 
 #%%GIGA plot
 
-day_start_display = 0
-days_display = 4
+day_start_display = 1
+days_display = 2
 col_num = 3
 
-fig, axes = plt.subplots(nrows=math.ceil(len(df.index.get_level_values('Load [%]'))/col_num), ncols=col_num, figsize=(20, 100))
-plt.subplots_adjust(wspace=0.4, hspace=0.4)
+fig, axes = plt.subplots(nrows=math.ceil(len(df.index.get_level_values('Load [%]'))/col_num), ncols=col_num, figsize=(25, 50))
+plt.subplots_adjust(wspace=0.55, hspace=0.4)
 
 
 #The enumerate() function returns an iterator with both the index number and value of each element
@@ -87,10 +88,10 @@ for i, ax in enumerate(axes.flat):
         ax_SOC = ax.twinx()
         ax_SOC.set_ylabel("SOC [-]")
         ax_SOC.plot(dfs_time_tot.loc[load]['SOC'][24*day_start_display:24*(day_start_display+days_display)], color='purple')
-        ax_SOC.legend(['SOC'], loc='upper left', bbox_to_anchor=(1.07, 0.25), fontsize=8, frameon=False)
+        ax_SOC.legend(['SOC'], loc='upper left', bbox_to_anchor=(1.15, 1), fontsize=8, frameon=False)
 
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles, labels, loc='center left', fontsize=8, frameon=False, bbox_to_anchor=(1.07, 0))
+        ax.legend(handles, labels, loc='center left', fontsize=8, frameon=False, bbox_to_anchor=(1.15, 0.87))
         
     else:
         # Remove empty subplot
@@ -98,6 +99,7 @@ for i, ax in enumerate(axes.flat):
 
 # Show the figure
 plt.show()
+plt.savefig('test_trivial.png')
 #%% 
 fig,  ax_cost= plt.subplots()
 
